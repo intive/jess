@@ -1,4 +1,5 @@
 target/
 .ensime
 .ensime_cache
+.ensime~
 .idea/
