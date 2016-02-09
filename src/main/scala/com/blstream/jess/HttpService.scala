@@ -1,15 +1,17 @@
 package com.blstream.jess
 
 import akka.actor.Actor
-import api.HealthCheck
+import api.{StartGame, HealthCheck}
 
 class HttpService extends Actor
-    with HealthCheck {
+    with HealthCheck
+    with StartGame {
 
   def actorRefFactory = context
 
   def receive = runRoute(
-    healthCheckRoute
+    healthCheckRoute ~
+    startGameRoute
   )
 
 }
