@@ -2,7 +2,7 @@ package com.blstream.jess.core
 
 import java.util.UUID
 
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ Promise, Future }
 
 trait StartGameService {
 

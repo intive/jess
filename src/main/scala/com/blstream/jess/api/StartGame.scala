@@ -5,13 +5,13 @@ import core.StartGameService
 import spray.routing.HttpService
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
 import ExecutionContext.Implicits.global
 
 trait StartGame
-  extends HttpService
-  with StartGameService {
+    extends HttpService
+    with StartGameService {
 
   lazy val startGameRoute =
     path("start" / Segment) { nick =>

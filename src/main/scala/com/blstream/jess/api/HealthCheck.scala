@@ -9,7 +9,7 @@ trait HealthCheck extends HttpService {
     path("health") {
       get {
         complete {
-            OK
+          OK
         }
       }
     }
