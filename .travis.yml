@@ -1,0 +1,21 @@
+sudo: false
+
+cache:
+  directories:
+    - $HOME/.sbt
+    - $HOME/.ivy2/cache
+
+language: scala
+
+scala:
+  - "2.11.7"
+
+jdk:
+  - oraclejdk8
+
+script:
+  - sbt test
+
+  # Tricks to avoid unnecessary cache updates
+  - find $HOME/.sbt -name "*.lock" -exec rm {} +
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -exec rm {} +
