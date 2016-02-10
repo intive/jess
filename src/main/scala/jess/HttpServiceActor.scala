@@ -1,15 +1,15 @@
 package com.blstream.jess
 
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives
+import api.{ StartGame, HealthCheck }
+import com.blstream.jess.api.StartGame
+import core._
 
 import scala.concurrent.ExecutionContext
 
-import api.{ StartGame, HealthCheck }
-
 trait HttpServiceActor
     extends HealthCheck
-    with StartGame with core.StartGameService {
+    with StartGame with StartGameService {
 
   import Directives._
 

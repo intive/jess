@@ -11,6 +11,8 @@ libraryDependencies ++= {
   Seq(
     "com.typesafe.akka" % "akka-stream-experimental_2.11" % akkaHttpVersion withSources(),
     "com.typesafe.akka" % "akka-http-core-experimental_2.11" % akkaHttpVersion withSources(),
-    "com.typesafe.akka" % "akka-http-experimental_2.11" % akkaHttpVersion withSources()
+    "com.typesafe.akka" % "akka-http-experimental_2.11" % akkaHttpVersion withSources(),
+    "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+    "com.typesafe.akka" % "akka-http-testkit-experimental_2.11" % akkaHttpVersion
   )
 }
