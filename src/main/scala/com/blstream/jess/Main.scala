@@ -1,18 +1,22 @@
 package com.blstream.jess
 
-import akka.actor.{ ActorSystem, Props }
+import akka.actor.{ActorSystem, Props}
 import akka.io.IO
 import akka.pattern.ask
+import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import spray.can.Http
+import akka.http.scaladsl._
 import scala.concurrent.duration._
 
-object Main extends App {
+object Main extends App with HttpServiceActor {
 
   implicit val system = ActorSystem("jess")
-  val service = system.actorOf(Props[HttpService], "jess-http-service")
+  implicit val flowMaterializer = ActorMaterializer()
+
   implicit val timeout = Timeout(5.seconds)
 
-  IO(Http) ? Http.Bind(service, interface = "localhost", port = 8090)
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  val binding = Http().bindAndHandle(route, "0.0.0.0", 8090)
 
 }

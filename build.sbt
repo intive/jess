@@ -7,10 +7,10 @@ version := "0.1-SNAPSHOT"
 scalaVersion := "2.11.7"
 
 libraryDependencies ++= {
-  val sprayVersion = "1.3.3"
+  val akkaHttpVersion = "2.0.3"
   Seq(
-    "com.typesafe.akka" %% "akka-actor"     % "2.4.1"       withSources() withJavadoc(),
-    "io.spray"          %% "spray-can"      % sprayVersion  withSources() withJavadoc(),
-    "io.spray"          %% "spray-routing"  % sprayVersion  withSources() withJavadoc()
+    "com.typesafe.akka" % "akka-stream-experimental_2.11" % akkaHttpVersion withSources(),
+    "com.typesafe.akka" % "akka-http-core-experimental_2.11" % akkaHttpVersion withSources(),
+    "com.typesafe.akka" % "akka-http-experimental_2.11" % akkaHttpVersion withSources()
   )
 }

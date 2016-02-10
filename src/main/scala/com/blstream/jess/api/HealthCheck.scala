@@ -1,15 +1,19 @@
 package com.blstream.jess
 package api
 
-import spray.http.StatusCodes.OK
-import spray.routing.HttpService
 
-trait HealthCheck extends HttpService {
-  lazy val healthCheckRoute =
-    path("health") {
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.model.StatusCodes._
+import concurrent.ExecutionContext
+
+
+trait HealthCheck {
+
+  def healthCheckRoute(implicit ec: ExecutionContext): Route = path("health") {
       get {
         complete {
-            OK
+          OK
         }
       }
     }

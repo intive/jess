@@ -1,25 +1,24 @@
 package com.blstream.jess
 package api
 
-import core.StartGameService
-import spray.routing.HttpService
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
-import ExecutionContext.Implicits.global
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 
-trait StartGame
-  extends HttpService
-  with StartGameService {
+import core.StartGameService
 
-  lazy val startGameRoute =
+trait StartGame {
+  self: StartGameService =>
+  def startGameRoute(implicit ec: ExecutionContext): Route =
     path("start" / Segment) { nick =>
       put {
-        onComplete(startGame(nick)) {
-          case Success(link) => complete(link)
-          case Failure(ex) => complete(s"Error: $ex")
+         complete {
+          startGame(nick)
         }
+
       }
     }
 
