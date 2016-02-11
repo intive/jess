@@ -7,12 +7,13 @@ import akka.http.scaladsl.server.Route
 
 trait HealthCheckRoute {
 
-  def healthCheckRoute: Route = path("health") {
-    get {
-      complete {
-        OK
+  def healthCheckRoute: Route =
+    path("health") {
+      get {
+        complete {
+          OK
+        }
       }
     }
-  }
 }
 
