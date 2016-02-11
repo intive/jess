@@ -11,7 +11,7 @@ object GameActor {
   case class Start(nick: Nick, token: String) extends GameMessages
 }
 
-class GameActor extends Actor {
+class GameActor extends Actor with StartGameService {
 
   var players = Map[Nick, ActorRef]()
 
@@ -27,6 +27,7 @@ class GameActor extends Actor {
           p
         }
         player ! PlayerActor.Start
+        sender ! startGame(nick)
       } else {
         //todo: add proper error types
         sender ! "error: bad token"

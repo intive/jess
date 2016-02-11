@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import scala.concurrent.duration._
-import core.{ StartGameService, GameActor }
+import core.GameActor
 import scala.language.postfixOps
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -17,7 +17,6 @@ import scala.util.Failure
 import scala.util.Success
 
 trait GameRoute {
-  self: StartGameService =>
 
   def gameRoute(implicit ec: ExecutionContext, system: ActorSystem) =
     path("start" / Segment) { nick =>
