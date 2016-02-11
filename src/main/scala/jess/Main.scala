@@ -1,13 +1,12 @@
-package com.blstream.jess
+package jess
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-
 import scala.concurrent.duration._
 
-object Main extends App with HttpServiceActor {
+object Main extends App with JessHttpService {
 
   implicit val system = ActorSystem("jess")
   implicit val flowMaterializer = ActorMaterializer()

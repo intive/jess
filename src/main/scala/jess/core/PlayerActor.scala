@@ -1,4 +1,4 @@
-package com.blstream.jess
+package jess
 package core
 
 import akka.persistence.PersistentActor
@@ -13,7 +13,8 @@ case object GameStarted
 
 class PlayerActor extends PersistentActor {
 
-  var points: Long
+  override def persistenceId: String = "player-actor"
+  var points: Long = 0
 
   override def receiveCommand: Receive = {
     case PlayerActor.Start => persist(GameStarted)(ev => startGame)

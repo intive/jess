@@ -1,4 +1,4 @@
-package com.blstream.jess
+package jess
 package core
 
 import java.util.UUID

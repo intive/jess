@@ -1,4 +1,4 @@
-package com.blstream.jess
+package jess
 package core
 
 import akka.actor.Actor
@@ -21,7 +21,7 @@ class GameActor extends Actor {
 
       //todo: add token validation
       if (token == "good-token") {
-        val player = players.get(nick).getOrElse{
+        val player = players.get(nick).getOrElse {
           val p = context.actorOf(Props[PlayerActor], nick)
           players += nick -> p
           p
