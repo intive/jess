@@ -13,7 +13,6 @@ libraryDependencies ++= {
     "com.typesafe.akka" % "akka-stream-experimental_2.11" % akkaHttpVersion withSources(),
     "com.typesafe.akka" % "akka-http-core-experimental_2.11" % akkaHttpVersion withSources(),
     "com.typesafe.akka" % "akka-http-experimental_2.11" % akkaHttpVersion withSources(),
-    "com.typesafe.akka" %% "akka-actor"           % akkaVersion   withSources() withJavadoc(),
     "com.typesafe.akka" %% "akka-persistence"     % akkaVersion   withSources() withJavadoc(),
     "org.scalatest" %% "scalatest" % "2.2.6" % "test",
     "com.typesafe.akka" % "akka-http-testkit-experimental_2.11" % akkaHttpVersion % "test"

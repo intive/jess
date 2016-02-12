@@ -2,14 +2,12 @@ package jess
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives
-import api.{ GameRoute, HealthCheckRoute }
-import core._
+import api.HealthCheckRoute
 
 import scala.concurrent.ExecutionContext
 
-trait JessHttpService
-    extends HealthCheckRoute
-    with GameRoute with StartGameService {
+trait JessHttpService {
+  self: HealthCheckRoute with GameComponent =>
 
   import Directives._
 

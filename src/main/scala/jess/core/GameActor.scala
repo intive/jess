@@ -12,13 +12,11 @@ object GameActor {
 }
 
 class GameActor extends Actor with StartGameService {
-
   var players = Map[Nick, ActorRef]()
 
   override def receive: Receive = {
 
     case GameActor.Start(nick, token) => {
-
       //todo: add token validation
       if (token == "good-token") {
         val player = players.get(nick).getOrElse {
@@ -32,7 +30,6 @@ class GameActor extends Actor with StartGameService {
         //todo: add proper error types
         sender ! "error: bad token"
       }
-
     }
 
   }

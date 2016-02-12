@@ -4,9 +4,24 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
+import jess.api.GameRoute
+import jess.api.HealthCheckRoute
+import jess.core.StartGameService
 import scala.concurrent.duration._
 
-object Main extends App with JessHttpService {
+object Main
+  extends Main
+  with App
+  with JessHttpService
+  with HealthCheckRoute
+  with GameComponent
+
+trait GameComponent
+  extends GameRoute
+  with StartGameService
+
+abstract class Main {
+  jess: JessHttpService =>
 
   implicit val system = ActorSystem("jess")
   implicit val flowMaterializer = ActorMaterializer()
@@ -16,5 +31,4 @@ object Main extends App with JessHttpService {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val binding = Http().bindAndHandle(route, "0.0.0.0", 8090)
-
 }
