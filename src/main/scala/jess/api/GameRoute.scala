@@ -7,7 +7,6 @@ import akka.pattern.ask
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import scala.concurrent.duration._
 import core.GameActor
 import scala.language.postfixOps
 
@@ -18,16 +17,12 @@ import scala.util.Success
 
 trait GameRoute {
 
-  def gameRoute(implicit ec: ExecutionContext, system: ActorSystem) =
+  def gameRoute(implicit system: ActorSystem, timeout: Timeout) =
     path("start" / Segment) { nick =>
       put {
-        implicit val timeout = Timeout(5 seconds)
-        val game = system.actorOf(Props[GameActor], nick)
-        val responseFuture = (game ? GameActor.Start(nick, "good-token")).mapTo[String]
-        onComplete(responseFuture) {
-          case Success(link: String) => complete(link)
-          case Failure(ex) => complete(ex)
-        }
+        val gameActor = system.actorSelection("/user/game")
+        val responseFuture = (gameActor ? GameActor.Start(nick, "good-token")).mapTo[String]
+        complete { responseFuture }
       }
     }
 

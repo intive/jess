@@ -2,6 +2,7 @@ package jess
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives
+import akka.util.Timeout
 import api.HealthCheckRoute
 
 import scala.concurrent.ExecutionContext
@@ -11,7 +12,7 @@ trait JessHttpService {
 
   import Directives._
 
-  def route()(implicit ec: ExecutionContext, context: ActorSystem) =
+  def route()(implicit system: ActorSystem, timeout: Timeout) =
     healthCheckRoute ~
       gameRoute
 }

@@ -1,11 +1,13 @@
 package jess
 
 import akka.actor.ActorSystem
+import akka.actor.Props
 import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import jess.api.GameRoute
 import jess.api.HealthCheckRoute
+import jess.core.GameActor
 import jess.core.GameService
 import scala.concurrent.duration._
 
@@ -25,10 +27,10 @@ abstract class Main {
 
   implicit val system = ActorSystem("jess")
   implicit val flowMaterializer = ActorMaterializer()
-
   implicit val timeout = Timeout(5.seconds)
-
   import scala.concurrent.ExecutionContext.Implicits.global
+
+  system.actorOf(Props[GameActor], "game")
 
   val binding = Http().bindAndHandle(route, "0.0.0.0", 8090)
 }
