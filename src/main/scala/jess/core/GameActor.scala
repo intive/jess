@@ -11,7 +11,7 @@ object GameActor {
   case class Start(nick: Nick, token: String) extends GameMessages
 }
 
-class GameActor extends Actor with StartGameService {
+class GameActor extends Actor with GameService {
   var players = Map[Nick, ActorRef]()
 
   override def receive: Receive = {

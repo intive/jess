@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import jess.api.GameRoute
 import jess.api.HealthCheckRoute
-import jess.core.StartGameService
+import jess.core.GameService
 import scala.concurrent.duration._
 
 object Main
@@ -18,7 +18,7 @@ object Main
 
 trait GameComponent
   extends GameRoute
-  with StartGameService
+  with GameService
 
 abstract class Main {
   jess: JessHttpService =>

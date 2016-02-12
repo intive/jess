@@ -3,7 +3,7 @@ package core
 
 import java.util.UUID
 
-trait StartGameService {
+trait GameService {
 
   def startGame: String => JessLink =
     nick => {
