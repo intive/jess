@@ -1,4 +1,4 @@
-package com.blstream.jess
+package jess
 
 package object core {
 
