@@ -1,4 +1,4 @@
-package jess
+package com.blstream.jess
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives

@@ -1,4 +1,4 @@
-package jess
+package com.blstream.jess
 package core
 
 import akka.actor.Actor

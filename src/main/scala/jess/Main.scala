@@ -1,14 +1,14 @@
-package jess
+package com.blstream.jess
 
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import jess.api.GameRoute
-import jess.api.{ HealthCheckRoute, Websocket }
-import jess.core.GameActor
-import jess.core.GameService
+import api.GameRoute
+import api.{ HealthCheckRoute, Websocket }
+import core.GameActor
+import core.GameService
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
 
