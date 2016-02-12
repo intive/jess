@@ -1,12 +1,13 @@
-package com.blstream.jess
+package jess
 package api
 
 import akka.http.scaladsl.model.ws.{ Message, TextMessage }
 import akka.http.scaladsl.server.Directives
 import akka.stream.scaladsl.Flow
 
-trait Websocket extends Directives {
-  val wsRoute = path("ws" / "scores") {
+trait Websocket {
+  import Directives._
+  def wsRoute = path("ws" / "scores") {
     get {
       handleWebsocketMessages(echoService)
     }
