@@ -32,5 +32,5 @@ abstract class Main {
 
   system.actorOf(Props[GameActor], "game")
 
-  val binding = Http().bindAndHandle(route, "0.0.0.0", 8090)
+  val binding = Http().bindAndHandle(route, "0.0.0.0", 8080)
 }
