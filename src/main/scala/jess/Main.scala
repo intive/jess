@@ -10,6 +10,8 @@ import jess.api.HealthCheckRoute
 import jess.core.GameActor
 import jess.core.GameService
 import scala.concurrent.duration._
+import scala.io.StdIn
+import com.typesafe.scalalogging.LazyLogging
 
 object Main
   extends Main
@@ -22,7 +24,7 @@ trait GameComponent
   extends GameRoute
   with GameService
 
-abstract class Main {
+abstract class Main extends LazyLogging {
   jess: JessHttpService =>
 
   implicit val system = ActorSystem("jess")
@@ -30,7 +32,16 @@ abstract class Main {
   implicit val timeout = Timeout(5.seconds)
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  val interface = "0.0.0.0"
+  val port = 8090
+
   system.actorOf(Props[GameActor], "game")
 
-  val binding = Http().bindAndHandle(route, "0.0.0.0", 8080)
+  val binding = Http().bindAndHandle(route, interface, port)
+  logger.info(s"Starting server http://$interface:$port\nPress RETURN to stop...")
+  StdIn.readLine()
+
+  binding
+    .flatMap(_.unbind())
+    .onComplete(_ => system.shutdown)
 }
