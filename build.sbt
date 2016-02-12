@@ -14,6 +14,9 @@ libraryDependencies ++= {
     "com.typesafe.akka" % "akka-http-core-experimental_2.11" % akkaHttpVersion withSources(),
     "com.typesafe.akka" % "akka-http-experimental_2.11" % akkaHttpVersion withSources(),
     "com.typesafe.akka" %% "akka-persistence"     % akkaVersion   withSources() withJavadoc(),
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+    "org.slf4j" % "slf4j-api" % "1.7.1",
+    "ch.qos.logback" % "logback-classic" % "1.0.3",
     "org.scalatest" %% "scalatest" % "2.2.6" % "test",
     "com.typesafe.akka" % "akka-http-testkit-experimental_2.11" % akkaHttpVersion % "test"
   )
