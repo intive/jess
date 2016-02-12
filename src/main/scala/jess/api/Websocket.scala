@@ -1,4 +1,4 @@
-package jess
+package com.blstream.jess
 package api
 
 import akka.http.scaladsl.model.ws.{ Message, TextMessage }
