@@ -5,9 +5,6 @@ import java.util.UUID
 
 trait GameService {
 
-  def startGame: String => JessLink =
-    nick => {
-      UUID.randomUUID().toString
-    }
+  def generateJessLink: JessLink = UUID.randomUUID().toString
 
 }

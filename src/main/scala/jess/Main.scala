@@ -7,7 +7,6 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import api.GameRoute
 import api.{ HealthCheckRoute, Websocket }
-import core.GameActor
 import core.GameService
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
@@ -34,8 +33,6 @@ abstract class Main extends LazyLogging {
 
   val interface = "0.0.0.0"
   val port = 8090
-
-  system.actorOf(Props[GameActor], "game")
 
   val binding = Http().bindAndHandle(route, interface, port)
   logger.info(s"Starting server http://$interface:$port")
