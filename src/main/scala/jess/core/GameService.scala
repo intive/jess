@@ -1,10 +1,13 @@
 package com.blstream.jess
 package core
 
-import java.util.UUID
+case class Challenge(question: String, answer: String)
 
-trait GameService {
+object GameService {
+  private val challanges = List(
+    Challenge("What is the meaning of life?", "42"),
+    Challenge("What is the best editor", "emacs")
+  )
 
-  def generateJessLink: JessLink = UUID.randomUUID().toString
-
+  def getChallanges = challanges
 }

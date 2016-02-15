@@ -16,12 +16,8 @@ object Main
   with App
   with JessHttpService
   with HealthCheckRoute
-  with GameComponent
+  with GameRoute
   with Websocket
-
-trait GameComponent
-  extends GameRoute
-  with GameService
 
 abstract class Main extends LazyLogging {
   jess: JessHttpService =>
