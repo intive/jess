@@ -15,6 +15,6 @@ trait JessHttpService {
   def route()(implicit system: ActorSystem, timeout: Timeout) =
     healthCheckRoute ~
       startGameRoute ~
-      challangeRoute ~
+      challengeRoute ~
       wsRoute
 }

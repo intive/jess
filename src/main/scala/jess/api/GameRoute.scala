@@ -26,8 +26,8 @@ trait GameRoute {
       }
     }
 
-  def challangeRoute(implicit system: ActorSystem, timeout: Timeout) =
-    path("game" / Segment / "challange") { nick =>
+  def challengeRoute(implicit system: ActorSystem, timeout: Timeout) =
+    path("game" / Segment / "challenge") { nick =>
       put {
         entity(as[String]) { answear =>
           val playerActor = PlayersMap.getPlayer(nick)
