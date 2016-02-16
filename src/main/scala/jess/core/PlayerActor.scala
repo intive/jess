@@ -18,26 +18,26 @@ case object ChallengeResolved extends PlayerEvents
 class PlayerActor extends PersistentActor {
   override def persistenceId: String = "player-actor"
 
-  var started = false
   var points: Long = 0
   var attempts: Long = 0
   val challenges = GameService.getChallanges
   var currentChallange: Int = 0
 
-  override def receiveCommand: Receive = {
+  def readyToPlay: Receive = {
     case PlayerActor.Start => {
-      if (!started) {
-        val challenge = challenges(currentChallange)
-        persist(Seq(
-          GameStarted,
-          ChallangePrepared(challenge)
-        ))(ev => startGame)
-        sender ! challenge.question
-      } else {
-        sender ! "Game already started"
-      }
+      val challenge = challenges(currentChallange)
+      persist(Seq(
+        GameStarted,
+        ChallangePrepared(challenge)
+      ))(ev => startGame)
+      sender ! challenge.question
+      context become playing
     }
+    case PlayerActor.Challenge(answear) => sender ! "Start game first"
+  }
 
+  def playing: Receive = {
+    case PlayerActor.Start => sender ! "Game already started"
     case PlayerActor.Challenge(answear) => {
       if (answear == challenges(currentChallange).answer) {
         if (currentChallange < challenges.size - 1) {
@@ -50,6 +50,7 @@ class PlayerActor extends PersistentActor {
           sender ! challenge.question
         } else {
           sender ! "Game finished"
+          context become gameFinished
         }
       } else {
         persist(ChallengeSubmitted(answear))(ev => increaseAttempts)
@@ -57,6 +58,13 @@ class PlayerActor extends PersistentActor {
       }
     }
   }
+
+  def gameFinished: Receive = {
+    case PlayerActor.Start => sender ! "Game finished"
+    case PlayerActor.Challenge(answear) => sender ! "Game finished"
+  }
+
+  override def receiveCommand: Receive = readyToPlay
 
   override def receiveRecover: Receive = {
     case GameStarted => startGame
@@ -67,7 +75,7 @@ class PlayerActor extends PersistentActor {
 
   private def startGame = {
     points = 0
-    started = true
+    context become playing
   }
   private def increaseAttempts = attempts += 1
   private def increasePoints = points += 100
