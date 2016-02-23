@@ -1,20 +1,15 @@
 package com.blstream.jess
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives
-import akka.util.Timeout
-import api.{ HealthCheckRoute, GameRoute, Websocket }
-
-import scala.concurrent.ExecutionContext
+import api.{ GameRoute, HealthCheckRoute, Websocket }
 
 trait JessHttpService {
   self: HealthCheckRoute with GameRoute with Websocket =>
 
   import Directives._
 
-  def route()(implicit system: ActorSystem, timeout: Timeout) =
+  def route =
     healthCheckRoute ~
-      startGameRoute ~
-      challengeRoute ~
+      gameRoute ~
       wsRoute
 }

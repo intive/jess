@@ -4,64 +4,94 @@ package core
 import akka.persistence.PersistentActor
 
 object PlayerActor {
+
   sealed trait PlayerMessages
+
+  case class Next(link: JessLink) extends PlayerMessages
+
+  case class Answer(link: JessLink, answer: String) extends PlayerMessages
+
   case object Start extends PlayerMessages
-  case class Challenge(answer: String) extends PlayerMessages
+
+  case object Current extends PlayerMessages
+
+  case object Stats extends PlayerMessages
+
 }
 
 sealed trait PlayerEvents
+
 case object GameStarted extends PlayerEvents
+
 case class ChallengePrepared(challenge: Challenge) extends PlayerEvents
-case class ChallengeSubmitted(answear: String) extends PlayerEvents
+
+case class ChallengeSubmitted(answer: String) extends PlayerEvents
+
 case object ChallengeResolved extends PlayerEvents
 
-class PlayerActor extends PersistentActor {
+case class PlayerStats(attempts: Int, time: Long) extends PlayerEvents
+
+class PlayerActor
+    extends PersistentActor
+    with ChallengeService
+    with LinkService {
+  var points: Long = 0
+  var currentAnswer: Answer = _
+  var challenge: Challenge = _
+  var attempts: Int = 0
+  var link: JessLink = _
+
   override def persistenceId: String = "player-actor"
 
-  var points: Long = 0
-  var attempts: Long = 0
-  val challenges = GameService.getChallenges
-  var currentChallenge: Int = 0
-
   def readyToPlay: Receive = {
-    case PlayerActor.Start => {
-      val challenge = challenges(currentChallenge)
+    case PlayerActor.Start =>
+      val (ch, ans) = nextChallenge(1)
+      challenge = ch
+      currentAnswer = ans
+      link = genLink
+
       persist(Seq(
         GameStarted,
         ChallengePrepared(challenge)
       ))(ev => startGame)
-      sender ! challenge.question
+      sender ! (challenge, link)
       context become playing
-    }
-    case PlayerActor.Challenge(_) => sender ! "Start game first"
+    case _ => sender ! "Start game first"
+
   }
 
   def playing: Receive = {
     case PlayerActor.Start => sender ! "Game already started"
-    case PlayerActor.Challenge(answear) => {
-      if (answear == challenges(currentChallenge).answer) {
-        if (currentChallenge < challenges.size - 1) {
-          val challenge = challenges(currentChallenge + 1)
-          persist(Seq(
-            ChallengeSubmitted(answear),
-            ChallengeResolved,
-            ChallengePrepared(challenge)
-          ))(ev => resolveChallenge)
-          sender ! challenge.question
-        } else {
-          sender ! "Game finished"
-          context become gameFinished
-        }
+    case PlayerActor.Answer(lnk, answer) =>
+      val resp = if (currentAnswer == answer) {
+        points = points + 1
+        attempts = attempts + 1
+        persist(Seq(
+          ChallengeSubmitted(answer),
+          ChallengeResolved,
+          ChallengePrepared(challenge)
+        ))(ev => resolveChallenge)
+        CorrectAnswer
       } else {
-        persist(ChallengeSubmitted(answear))(ev => increaseAttempts)
-        sender ! s"$answear is a wrong answear"
+        persist(ChallengeSubmitted(answer))(
+          ev => increaseAttempts
+        )
+        IncorrectAnswer
       }
-    }
+      sender ! resp
+    case PlayerActor.Next(lnk) ⇒
+      val (ch, ans) = nextChallenge(1)
+      currentAnswer = ans
+      challenge = ch
+      sender ! ch
+    case PlayerActor.Stats =>
+      sender ! PlayerStats(2, 300)
+    case PlayerActor.Current ⇒
+      sender ! link
   }
 
   def gameFinished: Receive = {
-    case PlayerActor.Start => sender ! "Game finished"
-    case PlayerActor.Challenge(_) => sender ! "Game finished"
+    case _ => sender ! "Game finished"
   }
 
   override def receiveCommand: Receive = readyToPlay
@@ -77,13 +107,15 @@ class PlayerActor extends PersistentActor {
     points = 0
     context become playing
   }
+
   private def increaseAttempts = attempts += 1
+
   private def increasePoints = points += 100
-  private def nextChallenge = currentChallenge += 1
+
   private def resolveChallenge = {
     increaseAttempts
     increasePoints
-    nextChallenge
+    challenge
   }
 
 }
