@@ -5,7 +5,7 @@ import akka.actor.Actor
 import cats.data.State
 
 final case class PlayerState(
-  nick: String,
+  nick: Option[String],
   points: Int = 0,
   attempts: Int = 0,
   challenge: Challenge
@@ -24,12 +24,14 @@ case class Answer(answer: String) extends PlayerAction
 trait PlayerLogic {
   challengeService: ChallengeService =>
 
+  val initGame: State[PlayerState, Unit] = State(ps => (ps, ()))
+
   val startGame: StartGame => State[PlayerState, Challenge] =
     start =>
       State(
         ps => {
           val ch = next(ps.challenge.level)
-          (ps.copy(nick = start.nick, challenge = ch), ch)
+          (ps.copy(nick = Some(start.nick), challenge = ch), ch)
         }
       )
 
@@ -47,12 +49,12 @@ class PlayerActor
     with PlayerLogic
     with ChallengeService {
 
-  var state: PlayerState
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, challenge = next(0))).value
 
   def receive = {
-    case sg@StartGame(nick) => {
-      val (st,ch) = startGame(sg).run(state).value
-      state = st
+    case sg @ StartGame(nick) => {
+      val (newState, ch) = startGame(sg).run(state).value
+      state = newState
       sender ! ch
     }
   }
