@@ -2,7 +2,15 @@ package com.blstream.jess
 package core.state
 
 import akka.actor.Actor
+
+import cats.SemigroupK
+import cats.data.NonEmptyList
 import cats.data.State
+import cats.data.Xor
+import cats.data.ValidatedNel
+import cats.data.Validated._
+import cats.syntax.cartesian._
+import cats.std.list._
 
 final case class PlayerState(
   nick: Option[String],
@@ -21,21 +29,49 @@ sealed trait PlayerAction
 case class StartGame(nick: String) extends PlayerAction
 case class Answer(answer: String) extends PlayerAction
 
-trait PlayerLogic {
-  challengeService: ChallengeService =>
+sealed abstract class SomeError
+final case object EmptyNickError extends SomeError
+final case object AlreadyTakenNickError extends SomeError
 
-  val initGame: State[PlayerState, Unit] = State(ps => (ps, ()))
+trait NickValidator {
 
-  val startGame: StartGame => State[PlayerState, Challenge] =
+  implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
+
+  val validate: StartGame => ValidatedNel[SomeError, StartGame] =
     start =>
+      (notEmpty(start.nick) |@| unique(start.nick)) map {
+        (_, _) => start
+      }
+
+  val notEmpty: String => ValidatedNel[SomeError, String] =
+    nick =>
+      if (nick.isEmpty) invalidNel(EmptyNickError)
+      else valid(nick)
+
+  val unique: String => ValidatedNel[SomeError, String] =
+    nick =>
+      valid(nick)
+}
+
+trait PlayerLogic {
+  self: ChallengeService with NickValidator =>
+
+  val initGame: PState[Unit] = State(ps => (ps, ()))
+
+  type XorNel[E, A] = Xor[NonEmptyList[E], A]
+  type PState[A] = State[PlayerState, A]
+
+  val startGame: StartGame => XorNel[SomeError, PState[Challenge]] =
+    validate(_).toXor.map { start =>
       State(
         ps => {
           val ch = next(ps.challenge.level)
           (ps.copy(nick = Some(start.nick), challenge = ch), ch)
         }
       )
+    }
 
-  val answerChallenge: Answer => State[PlayerState, Challenge] =
+  val answerChallenge: Answer => PState[Challenge] =
     answer => State(ps => (ps, ps.challenge))
 
 }
@@ -47,16 +83,23 @@ trait ChallengeService {
 class PlayerActor
     extends Actor
     with PlayerLogic
-    with ChallengeService {
+    with ChallengeService
+    with NickValidator {
 
   var state: PlayerState = initGame.runS(PlayerState(nick = None, challenge = next(0))).value
 
   def receive = {
-    case sg @ StartGame(nick) => {
-      val (newState, ch) = startGame(sg).run(state).value
-      state = newState
-      sender ! ch
-    }
+    case sg @ StartGame(_) =>
+      (for {
+        start <- startGame(sg)
+      } yield {
+        val (newState, ch) = start.run(state).value
+        state = newState
+        ch
+      }).fold(
+        err => sender ! err.unwrap,
+        sender ! _
+      )
   }
 
 }
