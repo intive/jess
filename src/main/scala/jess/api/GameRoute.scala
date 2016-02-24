@@ -20,8 +20,8 @@ object PostAnswerRequest extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val format = new RootJsonReader[PostAnswerRequest] {
     def read(value: JsValue): PostAnswerRequest = {
       value.asJsObject.getFields("answer") match {
-        case Seq(JsString(v)) ⇒ PostAnswerRequest(v)
-        case _ ⇒ deserializationError(s"cannot deserialize request $value")
+        case Seq(JsString(v)) => PostAnswerRequest(v)
+        case _ => deserializationError(s"cannot deserialize request $value")
       }
     }
 
@@ -53,12 +53,12 @@ case class ChallengeStats(meta: Meta, stats: Stats)
 trait GameRoute {
 
   lazy val gameRoute =
-    pathPrefix("game" / Segment) { nick ⇒
+    pathPrefix("game" / Segment) { nick =>
       path("start") {
         get {
           complete {
             for {
-              (challenge, jessLink) ← (gameActorRef ? GameActor.Join(nick)).mapTo[(Challenge, JessLink)]
+              (challenge, jessLink) <- (gameActorRef ? GameActor.Join(nick)).mapTo[(Challenge, JessLink)]
             } yield {
               ChallengeResponse(
                 meta = Meta(
@@ -74,8 +74,8 @@ trait GameRoute {
         get {
           complete {
             for {
-              jessLink ← (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-              stats ← (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
+              jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+              stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
             } yield {
               ChallengeStatsResponse(
                 meta = Meta(
@@ -91,8 +91,8 @@ trait GameRoute {
         get {
           complete {
             for {
-              jessLink ← (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-              challenge ← (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
+              jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+              challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
             } yield {
               ChallengeResponse(
                 meta = Meta(
@@ -104,18 +104,18 @@ trait GameRoute {
             }
           }
         }
-      } ~ path("challenge" / Segment) { challenge ⇒
+      } ~ path("challenge" / Segment) { challenge =>
         get {
           complete {
             (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
           }
         } ~ post {
-          entity(as[PostAnswerRequest]) { par ⇒
+          entity(as[PostAnswerRequest]) { par =>
             complete {
               val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[ResponseAnswer]
               resp.map {
-                case CorrectAnswer ⇒ StatusCodes.OK → "Correct Answer"
-                case IncorrectAnswer ⇒ StatusCodes.BadRequest → "Wrong Answer"
+                case CorrectAnswer => StatusCodes.OK → "Correct Answer"
+                case IncorrectAnswer => StatusCodes.BadRequest → "Wrong Answer"
               }
             }
           }

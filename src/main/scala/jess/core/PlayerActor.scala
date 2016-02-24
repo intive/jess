@@ -79,14 +79,14 @@ class PlayerActor
         IncorrectAnswer
       }
       sender ! resp
-    case PlayerActor.Next(lnk) ⇒
+    case PlayerActor.Next(lnk) =>
       val (ch, ans) = nextChallenge(1)
       currentAnswer = ans
       challenge = ch
       sender ! ch
     case PlayerActor.Stats =>
       sender ! PlayerStats(2, 300)
-    case PlayerActor.Current ⇒
+    case PlayerActor.Current =>
       sender ! link
   }
 

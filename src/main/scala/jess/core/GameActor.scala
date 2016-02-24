@@ -52,21 +52,21 @@ class GameActor
   override def receive = {
     case GameActor.Join(nick) =>
       (getRef(nick) ? PlayerActor.Start).mapTo[(Challenge, JessLink)] pipeTo sender
-    case GameActor.GetChallenge(nick, link) ⇒
+    case GameActor.GetChallenge(nick, link) =>
       (getRef(nick) ? PlayerActor.Next(link)).mapTo[Challenge] pipeTo sender
-    case GameActor.PostChallenge(nick, link, answer) ⇒
+    case GameActor.PostChallenge(nick, link, answer) =>
       (getRef(nick) ? PlayerActor.Answer(link, answer)).mapTo[ResponseAnswer] pipeTo sender
-    case GameActor.Stats(nick) ⇒
+    case GameActor.Stats(nick) =>
       val playerStats = (getRef(nick) ? PlayerActor.Stats).mapTo[PlayerStats]
-      val stats = playerStats map (ps ⇒ Stats(ps.attempts, ps.time))
+      val stats = playerStats map (ps => Stats(ps.attempts, ps.time))
       stats pipeTo sender
-    case GameActor.Current(nick) ⇒
+    case GameActor.Current(nick) =>
       (getRef(nick) ? PlayerActor.Current).mapTo[JessLink] pipeTo sender
   }
 }
 
 trait Cache {
-  self: Actor ⇒
+  self: Actor =>
   var cache: collection.mutable.Map[Nick, ActorRef] = collection.mutable.Map.empty
 
   def getRef(nick: Nick) = {

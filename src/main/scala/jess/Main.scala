@@ -40,7 +40,7 @@ abstract class Main
 class UnhandledMessageListener extends Actor with ActorLogging {
 
   override def receive = {
-    case message: UnhandledMessage ⇒
+    case message: UnhandledMessage =>
       log.error(s"CRITICAL! No actors found for message ${message.getMessage}")
       log.error("Shutting application down")
       System.exit(-1)
