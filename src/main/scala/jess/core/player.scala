@@ -2,37 +2,34 @@ package com.blstream.jess
 package core.state
 
 import akka.actor.Actor
-
 import cats.SemigroupK
-import cats.data.NonEmptyList
-import cats.data.State
-import cats.data.Validated
-import cats.data.Xor
-import cats.data.ValidatedNel
-import cats.data.Validated._
-import cats.syntax.cartesian._
-import cats.syntax.xor._
+import cats.data.{ NonEmptyList, State, ValidatedNel, Xor }
 import cats.std.list._
+import cats.syntax.xor._
+import cats.syntax.cartesian._
+import core._
 
 final case class PlayerState(
   nick: Option[String],
   points: Int = 0,
   attempts: Int = 0,
-  challenge: Challenge
+  chans: ChallengeWithAnswer
 )
 
-final case class Challenge(
-  level: Int = 0,
-  question: String,
-  answer: String
-)
+final case class ChallengeWithAnswer(level: Int, challenge: Challenge, answer: String)
+
+final case class Challenge(title: String, description: String, assignment: String)
 
 sealed trait PlayerAction
+
 case class StartGame(nick: String) extends PlayerAction
+
 case class Answer(answer: String) extends PlayerAction
 
 sealed trait SomeError
+
 final case object EmptyNickError extends SomeError
+
 final case object AlreadyTakenNickError extends SomeError
 
 trait NickValidator {
@@ -41,10 +38,9 @@ trait NickValidator {
 
   val validate: String => ValidatedNel[SomeError, String] =
     nick =>
-      (notEmpty(nick).toValidated.toValidatedNel
-        |@| unique(nick).toValidated.toValidatedNel) map {
-          (_, _) => nick
-        }
+      (notEmpty(nick).toValidated.toValidatedNel |@| unique(nick).toValidated.toValidatedNel) map {
+        (_, _) => nick
+      }
 
   private val notEmpty: String => Xor[SomeError, String] =
     nick =>
@@ -68,19 +64,15 @@ trait PlayerLogic {
       } yield {
         State(
           ps => {
-            val ch = next(ps.challenge.level)
-            (ps.copy(nick = Some(nick), challenge = ch), ch)
+            val chans = nextChallenge(ps.chans.level)
+            (ps.copy(nick = Some(nick), chans = chans), chans.challenge)
           }
         )
       }
 
   val answerChallenge: Answer => State[PlayerState, Challenge] =
-    answer => State(ps => (ps, ps.challenge))
+    answer => State(ps => (ps, ps.chans.challenge))
 
-}
-
-trait ChallengeService {
-  def next: Int => Challenge = ???
 }
 
 class PlayerActor
@@ -89,7 +81,7 @@ class PlayerActor
     with ChallengeService
     with NickValidator {
 
-  var state: PlayerState = initGame.runS(PlayerState(nick = None, challenge = next(0))).value
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
 
   def receive = {
     case sg @ StartGame(_) =>

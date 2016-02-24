@@ -7,7 +7,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
 import akka.util.Timeout
-import core.{Challenge, CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats}
+import core.state.Challenge
+import core.{ CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats }
 import spray.json._
 
 import concurrent.Future
@@ -36,9 +37,14 @@ object Meta extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val format = jsonFormat2(Meta.apply)
 }
 
+object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat3(Challenge)
+}
+
 case class ChallengeResponse(meta: Meta, challenge: Challenge)
 
 object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
+  import ChallengeFormat._
   implicit val format = jsonFormat2(ChallengeResponse.apply)
 }
 
@@ -70,6 +76,7 @@ trait GameRoute {
       } ~ path("challenge" / Segment) { challenge =>
         get {
           complete {
+            import ChallengeFormat._
             (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
           }
         } ~ post {

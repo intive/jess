@@ -2,14 +2,11 @@ package com.blstream.jess
 package core
 
 import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.pattern._
 import akka.util.Timeout
-import spray.json.DefaultJsonProtocol
+import core.state.Challenge
 
 import scala.concurrent.duration._
-
-case class Challenge(title: String, description: String, assigment: String)
 
 case class Stats(attempts: Int, time: Long)
 
@@ -18,10 +15,6 @@ sealed trait ResponseAnswer
 case object CorrectAnswer extends ResponseAnswer
 
 case object IncorrectAnswer extends ResponseAnswer
-
-object Challenge extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val format = jsonFormat3(Challenge.apply)
-}
 
 object GameActor {
 
