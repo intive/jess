@@ -10,6 +10,7 @@ import akka.util.Timeout
 import core.{Challenge, CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats}
 import spray.json._
 
+import concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
@@ -54,37 +55,17 @@ trait GameRoute {
 
   lazy val gameRoute =
     pathPrefix("game" / Segment) { nick =>
-      path("start") {
-        get {
-          complete {
-            for {
-              (challenge, jessLink) <- (gameActorRef ? GameActor.Join(nick)).mapTo[(Challenge, JessLink)]
-            } yield {
-              ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
-            }
-          }
+      (path("start") & get) {
+        complete {
+          makeChallengeResponse(nick)
         }
-      } ~ path("challenge") {
-        get {
-          complete {
-            for {
-              jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-              stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
-            } yield {
-              ChallengeStatsResponse(meta = makeMeta(nick)(jessLink), stats)
-            }
-          }
+      } ~ (path("challenge") & get) {
+        complete {
+          makeChallengeStatsResponse(nick)
         }
-      } ~ path("challenge" / "current") {
-        get {
-          complete {
-            for {
-              jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-              challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
-            } yield {
-              ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
-            }
-          }
+      } ~ (path("challenge" / "current") & get) {
+        complete {
+          makeCurrentChallengeResponse(nick)
         }
       } ~ path("challenge" / Segment) { challenge =>
         get {
@@ -96,8 +77,8 @@ trait GameRoute {
             complete {
               val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[ResponseAnswer]
               resp.map {
-                case CorrectAnswer => StatusCodes.OK → "Correct Answer"
-                case IncorrectAnswer => StatusCodes.BadRequest → "Wrong Answer"
+                case CorrectAnswer => StatusCodes.OK -> "Correct Answer"
+                case IncorrectAnswer => StatusCodes.BadRequest -> "Wrong Answer"
               }
             }
           }
@@ -111,9 +92,28 @@ trait GameRoute {
       stats = s"/game/$nick/challenge"
     )
 
+  private val makeChallengeResponse: String => Future[ChallengeResponse] = nick => for {
+    (challenge, jessLink) <- (gameActorRef ? GameActor.Join(nick)).mapTo[(Challenge, JessLink)]
+  } yield {
+    ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
+  }
+
+  private val makeChallengeStatsResponse: String => Future[ChallengeStatsResponse] = nick => for {
+    jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+    stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
+  } yield {
+    ChallengeStatsResponse(meta = makeMeta(nick)(jessLink), stats)
+  }
+
+  private val makeCurrentChallengeResponse: String => Future[ChallengeResponse] = nick => for {
+    jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+    challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
+  } yield {
+    ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
+  }
+
   implicit val timeout: Timeout
 
   def gameActorRef: ActorRef
-
 
 }
