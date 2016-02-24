@@ -51,7 +51,7 @@ class GameActor
     case GameActor.GetChallenge(nick, link) =>
       (getRef(nick) ? PlayerLogic.Next(link)).mapTo[Challenge] pipeTo sender
     case GameActor.PostChallenge(nick, link, answer) =>
-      (getRef(nick) ? PlayerLogic.Answer(link, answer)).mapTo[ResponseAnswer] pipeTo sender
+      (getRef(nick) ? PlayerLogic.Answer(link, answer)) pipeTo sender
     case GameActor.Stats(nick) =>
       val playerStats = (getRef(nick) ? PlayerLogic.Stats).mapTo[PlayerStats]
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time))

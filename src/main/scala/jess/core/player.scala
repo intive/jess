@@ -1,9 +1,8 @@
 package com.blstream.jess
 package core.state
 
-import akka.actor.Actor
 import cats.SemigroupK
-import cats.data.{ NonEmptyList, State, ValidatedNel, Xor }
+import cats.data.{ StateT, XorT, NonEmptyList, State, ValidatedNel, Xor }
 import cats.std.list._
 import cats.syntax.xor._
 import cats.syntax.cartesian._
@@ -42,20 +41,22 @@ final case object EmptyNickError extends SomeError
 final case object AlreadyTakenNickError extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
+final case object IncorrectAnswer extends SomeError
 
 trait NickValidator {
 
-  implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
+  // implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
 
-  val validate: String => ValidatedNel[SomeError, String] =
+  val validate: String => Xor[SomeError, String] =
     nick =>
-      (notEmpty(nick).toValidated.toValidatedNel |@| unique(nick).toValidated.toValidatedNel) map {
-        (_, _) => nick
-      }
+      for {
+        _ <- notEmpty(nick)
+        _ <- unique(nick)
+      } yield nick
 
   private val notEmpty: String => Xor[SomeError, String] =
     nick =>
-      if (nick.isEmpty) EmptyNickError.left
+      if (nick.isEmpty || nick == "foo") EmptyNickError.left
       else nick.right
 
   private val unique: String => Xor[SomeError, String] =
@@ -70,7 +71,7 @@ trait PlayerLogic {
 
   val initGame: State[PlayerState, Unit] = State(ps => (ps, ()))
 
-  val startGame: StartGame => ValidatedNel[SomeError, State[PlayerState, Challenge]] =
+  val startGame: StartGame => Xor[SomeError, State[PlayerState, Challenge]] =
     start =>
       for {
         nick <- validate(start.nick)
@@ -83,7 +84,25 @@ trait PlayerLogic {
         )
       }
 
-  val answerChallenge: Answer => State[PlayerState, Challenge] =
-    answer => State(ps => (ps, ps.chans.challenge))
+  val answerChallenge: Answer => Xor[SomeError, State[PlayerState, Challenge]] = answer => for {
+    _ <- incrementAttempts.right
+    _ <- checkAnswer(answer)
+    _ <- updatePoints.right
+    challenge <- newChallenge.right
+  } yield challenge
 
+  private val checkAnswer: Answer => Xor[SomeError, State[PlayerState, Challenge]] = answer => {
+
+    val x = for {
+      ps <- State.get[PlayerState]
+    } yield {
+      if (answer.answer == ps.chans.answer) ps.right else IncorrectAnswer.left
+    }
+  }
+  private val updatePoints: State[PlayerState, Unit] = State(ps => (ps.copy(points = ps.points + 10), ()))
+  private val newChallenge: State[PlayerState, Challenge] = State(ps => {
+    val ch = nextChallenge(ps.chans.level + 1)
+    (ps.copy(chans = ch), ch.challenge)
+  })
+  private val incrementAttempts: State[PlayerState, Unit] = State(ps => (ps.copy(attempts = ps.attempts + 1), ()))
 }
