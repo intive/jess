@@ -2,35 +2,14 @@ package com.blstream.jess
 package core
 
 import akka.persistence.PersistentActor
-import core.state.{ Challenge, PlayerState, NickValidator, PlayerLogic }
+import cats.syntax.validated._
+import core.state.{ Challenge, NickValidator, PlayerLogic, PlayerState, StateTransitionError }
 
-object PlayerActor {
-
-  sealed trait PlayerMessages
-
-  case class Next(link: JessLink) extends PlayerMessages
-
-  case class Answer(link: JessLink, answer: String) extends PlayerMessages
-
-  case object Start extends PlayerMessages
-
-  case object Current extends PlayerMessages
-
-  case object Stats extends PlayerMessages
-
-}
+case class PlayerStats(attempts: Int, time: Long)
 
 sealed trait PlayerEvents
 
-case object GameStarted extends PlayerEvents
-
-case class ChallengePrepared(challenge: Challenge) extends PlayerEvents
-
-case class ChallengeSubmitted(answer: String) extends PlayerEvents
-
-case object ChallengeResolved extends PlayerEvents
-
-case class PlayerStats(attempts: Int, time: Long) extends PlayerEvents
+case class StateModified(ps: PlayerState) extends PlayerEvents
 
 class PlayerActor
     extends PersistentActor
@@ -38,60 +17,60 @@ class PlayerActor
     with LinkService
     with PlayerLogic
     with NickValidator {
+
   var points: Long = 0
   var currentAnswer: String = _
   var challenge: Challenge = _
   var attempts: Int = 0
   var link: JessLink = _
 
-  val state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
 
   override def persistenceId: String = "player-actor"
 
   def readyToPlay: Receive = {
-    case PlayerActor.Start =>
-      val chans = nextChallenge(1)
-      challenge = chans.challenge
-      currentAnswer = chans.answer
-      link = genLink
+    case sg @ PlayerLogic.StartGame(_) =>
+      val foo = for {
+        start <- startGame(sg)
+      } yield {
+        val (newState, ch) = start.run(state).value
+        state = newState
+        persist(
+          StateModified(state)
+        )(ev => startGame1)
+        ch
+      }
+      sender ! foo
 
-      persist(Seq(
-        GameStarted,
-        ChallengePrepared(challenge)
-      ))(ev => startGame1)
-      sender ! (challenge, link)
-      context become playing
-    case _ => sender ! "Start game first"
+    case _ => sender ! StateTransitionError("Start game first").invalidNel
 
   }
 
   def playing: Receive = {
-    case PlayerActor.Start => sender ! "Game already started"
-    case PlayerActor.Answer(lnk, answer) =>
+    case PlayerLogic.StartGame => sender ! "Game already started"
+    case PlayerLogic.Answer(lnk, answer) =>
       val resp = if (currentAnswer == answer) {
         points = points + 1
         attempts = attempts + 1
-        persist(Seq(
-          ChallengeSubmitted(answer),
-          ChallengeResolved,
-          ChallengePrepared(challenge)
-        ))(ev => resolveChallenge)
+        persist(
+          StateModified(state)
+        )(ev => resolveChallenge)
         CorrectAnswer
       } else {
-        persist(ChallengeSubmitted(answer))(
+        persist(StateModified(state))(
           ev => increaseAttempts
         )
         IncorrectAnswer
       }
       sender ! resp
-    case PlayerActor.Next(lnk) =>
+    case PlayerLogic.Next(lnk) =>
       val chans = nextChallenge(1)
       currentAnswer = chans.answer
       challenge = chans.challenge
       sender ! challenge
-    case PlayerActor.Stats =>
+    case PlayerLogic.Stats =>
       sender ! PlayerStats(2, 300)
-    case PlayerActor.Current =>
+    case PlayerLogic.Current =>
       sender ! link
   }
 
@@ -100,13 +79,7 @@ class PlayerActor
   }
 
   override def receiveCommand: Receive = readyToPlay
-
-  override def receiveRecover: Receive = {
-    case GameStarted => startGame1
-    case ChallengePrepared(challenge) =>
-    case ChallengeSubmitted(answer) => increaseAttempts
-    case ChallengeResolved => resolveChallenge
-  }
+  override def receiveRecover: Receive = { case _ => }
 
   private def startGame1 = {
     points = 0

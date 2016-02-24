@@ -20,17 +20,28 @@ final case class ChallengeWithAnswer(level: Int, challenge: Challenge, answer: S
 
 final case class Challenge(title: String, description: String, assignment: String)
 
-sealed trait PlayerAction
+object PlayerLogic {
 
-case class StartGame(nick: String) extends PlayerAction
+  sealed trait PlayerAction
 
-case class Answer(answer: String) extends PlayerAction
+  case class StartGame(nick: String) extends PlayerAction
 
+  case class Next(link: JessLink) extends PlayerAction
+
+  case class Answer(link: JessLink, answer: String) extends PlayerAction
+
+  case object Current extends PlayerAction
+
+  case object Stats extends PlayerAction
+
+}
 sealed trait SomeError
 
 final case object EmptyNickError extends SomeError
 
 final case object AlreadyTakenNickError extends SomeError
+
+final case class StateTransitionError(message: String) extends SomeError
 
 trait NickValidator {
 
@@ -55,6 +66,8 @@ trait NickValidator {
 trait PlayerLogic {
   self: ChallengeService with NickValidator =>
 
+  import PlayerLogic._
+
   val initGame: State[PlayerState, Unit] = State(ps => (ps, ()))
 
   val startGame: StartGame => ValidatedNel[SomeError, State[PlayerState, Challenge]] =
@@ -72,27 +85,5 @@ trait PlayerLogic {
 
   val answerChallenge: Answer => State[PlayerState, Challenge] =
     answer => State(ps => (ps, ps.chans.challenge))
-
-}
-
-class PlayerActor
-    extends Actor
-    with PlayerLogic
-    with ChallengeService
-    with NickValidator {
-
-  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
-
-  def receive = {
-    case sg @ StartGame(_) =>
-      val foo = for {
-        start <- startGame(sg)
-      } yield {
-        val (newState, ch) = start.run(state).value
-        state = newState
-        ch
-      }
-      sender ! foo
-  }
 
 }

@@ -2,9 +2,12 @@ package com.blstream.jess
 package core
 
 import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
+
 import akka.pattern._
 import akka.util.Timeout
 import core.state.Challenge
+
+import state._
 
 import scala.concurrent.duration._
 
@@ -44,17 +47,17 @@ class GameActor
 
   override def receive = {
     case GameActor.Join(nick) =>
-      (getRef(nick) ? PlayerActor.Start).mapTo[(Challenge, JessLink)] pipeTo sender
+      (getRef(nick) ? PlayerLogic.StartGame(nick)) pipeTo sender
     case GameActor.GetChallenge(nick, link) =>
-      (getRef(nick) ? PlayerActor.Next(link)).mapTo[Challenge] pipeTo sender
+      (getRef(nick) ? PlayerLogic.Next(link)).mapTo[Challenge] pipeTo sender
     case GameActor.PostChallenge(nick, link, answer) =>
-      (getRef(nick) ? PlayerActor.Answer(link, answer)).mapTo[ResponseAnswer] pipeTo sender
+      (getRef(nick) ? PlayerLogic.Answer(link, answer)).mapTo[ResponseAnswer] pipeTo sender
     case GameActor.Stats(nick) =>
-      val playerStats = (getRef(nick) ? PlayerActor.Stats).mapTo[PlayerStats]
+      val playerStats = (getRef(nick) ? PlayerLogic.Stats).mapTo[PlayerStats]
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time))
       stats pipeTo sender
     case GameActor.Current(nick) =>
-      (getRef(nick) ? PlayerActor.Current).mapTo[JessLink] pipeTo sender
+      (getRef(nick) ? PlayerLogic.Current).mapTo[JessLink] pipeTo sender
   }
 }
 
