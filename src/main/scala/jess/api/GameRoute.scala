@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
 import akka.util.Timeout
-import core.{ Challenge, CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats }
+import core.{Challenge, CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats}
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -60,13 +60,7 @@ trait GameRoute {
             for {
               (challenge, jessLink) <- (gameActorRef ? GameActor.Join(nick)).mapTo[(Challenge, JessLink)]
             } yield {
-              ChallengeResponse(
-                meta = Meta(
-                  current = s"/game/$nick/challenge/$jessLink",
-                  stats = s"/game/$nick/challenge"
-                ),
-                challenge
-              )
+              ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
             }
           }
         }
@@ -77,13 +71,7 @@ trait GameRoute {
               jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
               stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
             } yield {
-              ChallengeStatsResponse(
-                meta = Meta(
-                  current = s"/game/$nick/challenge/$jessLink",
-                  stats = s"/game/$nick/challenge"
-                ),
-                stats
-              )
+              ChallengeStatsResponse(meta = makeMeta(nick)(jessLink), stats)
             }
           }
         }
@@ -94,13 +82,7 @@ trait GameRoute {
               jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
               challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
             } yield {
-              ChallengeResponse(
-                meta = Meta(
-                  current = s"/game/$nick/challenge/$jessLink",
-                  stats = s"/game/$nick/challenge"
-                ),
-                challenge
-              )
+              ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
             }
           }
         }
@@ -122,7 +104,16 @@ trait GameRoute {
         }
       }
     }
+
+  private val makeMeta: String => JessLink => Meta = nick => link =>
+    Meta(
+      current = s"/game/$nick/challenge/$link",
+      stats = s"/game/$nick/challenge"
+    )
+
   implicit val timeout: Timeout
 
   def gameActorRef: ActorRef
+
+
 }
