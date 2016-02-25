@@ -3,11 +3,14 @@ package api
 
 import akka.actor.ActorRef
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import akka.http.scaladsl.server.Directives._
-import akka.pattern.ask
+import akka.pattern._
 import akka.util.Timeout
-import core.{Challenge, CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats}
+import cats.data.Xor
+import cats.data.Xor.Left
+import core.state.{ Challenge, SomeError }
+import core.{ CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats }
 import spray.json._
 
 import concurrent.Future
@@ -36,9 +39,16 @@ object Meta extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val format = jsonFormat2(Meta.apply)
 }
 
+object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat3(Challenge)
+}
+
 case class ChallengeResponse(meta: Meta, challenge: Challenge)
 
 object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
+
+  import ChallengeFormat._
+
   implicit val format = jsonFormat2(ChallengeResponse.apply)
 }
 
@@ -70,15 +80,16 @@ trait GameRoute {
       } ~ path("challenge" / Segment) { challenge =>
         get {
           complete {
+            import ChallengeFormat._
             (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
           }
         } ~ post {
           entity(as[PostAnswerRequest]) { par =>
             complete {
-              val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[ResponseAnswer]
+              val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
               resp.map {
-                case CorrectAnswer => StatusCodes.OK -> "Correct Answer"
-                case IncorrectAnswer => StatusCodes.BadRequest -> "Wrong Answer"
+                case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
+                case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
               }
             }
           }
@@ -92,10 +103,20 @@ trait GameRoute {
       stats = s"/game/$nick/challenge"
     )
 
-  private val makeChallengeResponse: String => Future[ChallengeResponse] = nick => for {
-    (challenge, jessLink) <- (gameActorRef ? GameActor.Join(nick)).mapTo[(Challenge, JessLink)]
-  } yield {
-    ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
+  private val makeChallengeResponse: String => Future[HttpResponse] = nick => {
+    val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
+
+    respF.map {
+      case resp => resp.fold(
+        err =>
+          HttpResponse(StatusCodes.BadRequest, entity = err.toString),
+        challenge => HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+          meta = makeMeta(nick)("link_change_me"),
+          challenge
+        ).toJson.prettyPrint)
+      )
+    }
+
   }
 
   private val makeChallengeStatsResponse: String => Future[ChallengeStatsResponse] = nick => for {

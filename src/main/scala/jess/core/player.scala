@@ -1,54 +1,61 @@
 package com.blstream.jess
 package core.state
 
-import akka.actor.Actor
-
 import cats.SemigroupK
-import cats.data.NonEmptyList
-import cats.data.State
-import cats.data.Validated
-import cats.data.Xor
-import cats.data.ValidatedNel
-import cats.data.Validated._
-import cats.syntax.cartesian._
+import cats.data.{ NonEmptyList, State, Xor }
 import cats.syntax.xor._
-import cats.std.list._
+
+import core._
 
 final case class PlayerState(
   nick: Option[String],
   points: Int = 0,
   attempts: Int = 0,
-  challenge: Challenge
+  chans: ChallengeWithAnswer
 )
 
-final case class Challenge(
-  level: Int = 0,
-  question: String,
-  answer: String
-)
+final case class ChallengeWithAnswer(level: Int, challenge: Challenge, answer: String)
 
-sealed trait PlayerAction
-case class StartGame(nick: String) extends PlayerAction
-case class Answer(answer: String) extends PlayerAction
+final case class Challenge(title: String, description: String, assignment: String)
 
+object PlayerLogic {
+
+  sealed trait PlayerAction
+
+  case class StartGame(nick: String) extends PlayerAction
+
+  case class Next(link: JessLink) extends PlayerAction
+
+  case class Answer(link: JessLink, answer: String) extends PlayerAction
+
+  case object Current extends PlayerAction
+
+  case object Stats extends PlayerAction
+
+}
 sealed trait SomeError
+
 final case object EmptyNickError extends SomeError
+
 final case object AlreadyTakenNickError extends SomeError
+
+final case class StateTransitionError(message: String) extends SomeError
+final case object IncorrectAnswer extends SomeError
 
 trait NickValidator {
 
-  implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
+  // implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
 
-  val validate: String => ValidatedNel[SomeError, String] =
+  val validate: String => Xor[SomeError, String] =
     nick =>
-      (notEmpty(nick).toValidated.toValidatedNel
-        |@| unique(nick).toValidated.toValidatedNel) map {
-          (_, _) => nick
-        }
+      for {
+        _ <- notEmpty(nick)
+        _ <- unique(nick)
+      } yield nick
 
   private val notEmpty: String => Xor[SomeError, String] =
     nick =>
-      if (nick.isEmpty) EmptyNickError.left
+      if (nick.isEmpty || nick == "foo") EmptyNickError.left
       else nick.right
 
   private val unique: String => Xor[SomeError, String] =
@@ -59,48 +66,51 @@ trait NickValidator {
 trait PlayerLogic {
   self: ChallengeService with NickValidator =>
 
+  import PlayerLogic._
+
   val initGame: State[PlayerState, Unit] = State(ps => (ps, ()))
 
-  val startGame: StartGame => ValidatedNel[SomeError, State[PlayerState, Challenge]] =
+  val startGame: StartGame => Xor[SomeError, State[PlayerState, Challenge]] =
     start =>
       for {
         nick <- validate(start.nick)
       } yield {
         State(
           ps => {
-            val ch = next(ps.challenge.level)
-            (ps.copy(nick = Some(nick), challenge = ch), ch)
+            val chans = nextChallenge(ps.chans.level)
+            (ps.copy(nick = Some(nick), chans = chans), chans.challenge)
           }
         )
       }
 
-  val answerChallenge: Answer => State[PlayerState, Challenge] =
-    answer => State(ps => (ps, ps.challenge))
-
-}
-
-trait ChallengeService {
-  def next: Int => Challenge = ???
-}
-
-class PlayerActor
-    extends Actor
-    with PlayerLogic
-    with ChallengeService
-    with NickValidator {
-
-  var state: PlayerState = initGame.runS(PlayerState(nick = None, challenge = next(0))).value
-
-  def receive = {
-    case sg @ StartGame(_) =>
-      val foo = for {
-        start <- startGame(sg)
+  val answerChallenge: Answer => PlayerState => Xor[SomeError, State[PlayerState, Challenge]] =
+    answer => ps => {
+      for {
+        _ <- incrementAttempts.right
+        _ <- checkAnswer(answer)(ps)
       } yield {
-        val (newState, ch) = start.run(state).value
-        state = newState
-        ch
+        for {
+          _ <- updatePoints
+          challenge <- newChallenge
+        } yield challenge
       }
-      sender ! foo
-  }
+    }
 
+  private val checkAnswer: Answer => PlayerState => Xor[SomeError, Answer] =
+    answer => ps => {
+      if (answer.answer == ps.chans.answer) answer.right
+      else IncorrectAnswer.left
+    }
+
+  private val updatePoints: State[PlayerState, Unit] =
+    State(ps => (ps.copy(points = ps.points + 10), ()))
+
+  private val newChallenge: State[PlayerState, Challenge] =
+    State(ps => {
+      val ch = nextChallenge(ps.chans.level + 1)
+      (ps.copy(chans = ch), ch.challenge)
+    })
+
+  private val incrementAttempts: State[PlayerState, Unit] =
+    State(ps => (ps.copy(attempts = ps.attempts + 1), ()))
 }

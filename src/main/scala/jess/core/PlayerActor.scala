@@ -2,92 +2,68 @@ package com.blstream.jess
 package core
 
 import akka.persistence.PersistentActor
+import cats.syntax.validated._
+import core.state.{ Challenge, NickValidator, PlayerLogic, PlayerState, StateTransitionError }
+import cats.syntax.xor._
 
-object PlayerActor {
-
-  sealed trait PlayerMessages
-
-  case class Next(link: JessLink) extends PlayerMessages
-
-  case class Answer(link: JessLink, answer: String) extends PlayerMessages
-
-  case object Start extends PlayerMessages
-
-  case object Current extends PlayerMessages
-
-  case object Stats extends PlayerMessages
-
-}
+case class PlayerStats(attempts: Int, time: Long)
 
 sealed trait PlayerEvents
 
-case object GameStarted extends PlayerEvents
-
-case class ChallengePrepared(challenge: Challenge) extends PlayerEvents
-
-case class ChallengeSubmitted(answer: String) extends PlayerEvents
-
-case object ChallengeResolved extends PlayerEvents
-
-case class PlayerStats(attempts: Int, time: Long) extends PlayerEvents
+case class StateModified(ps: PlayerState) extends PlayerEvents
 
 class PlayerActor
     extends PersistentActor
     with ChallengeService
-    with LinkService {
-  var points: Long = 0
-  var currentAnswer: Answer = _
-  var challenge: Challenge = _
-  var attempts: Int = 0
-  var link: JessLink = _
+    with LinkService
+    with PlayerLogic
+    with NickValidator {
+
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
 
   override def persistenceId: String = "player-actor"
 
   def readyToPlay: Receive = {
-    case PlayerActor.Start =>
-      val (ch, ans) = nextChallenge(1)
-      challenge = ch
-      currentAnswer = ans
-      link = genLink
+    case sg @ PlayerLogic.StartGame(_) =>
+      val foo = for {
+        start <- startGame(sg)
+      } yield {
+        val (newState, ch) = start.run(state).value
+        persist(
+          StateModified(newState)
+        )(ev => {
+            state = newState
+            context become playing
+          })
+        ch
+      }
+      sender ! foo
 
-      persist(Seq(
-        GameStarted,
-        ChallengePrepared(challenge)
-      ))(ev => startGame)
-      sender ! (challenge, link)
-      context become playing
-    case _ => sender ! "Start game first"
+    case _ => sender ! StateTransitionError("Start game first").left
 
   }
 
   def playing: Receive = {
-    case PlayerActor.Start => sender ! "Game already started"
-    case PlayerActor.Answer(lnk, answer) =>
-      val resp = if (currentAnswer == answer) {
-        points = points + 1
-        attempts = attempts + 1
-        persist(Seq(
-          ChallengeSubmitted(answer),
-          ChallengeResolved,
-          ChallengePrepared(challenge)
-        ))(ev => resolveChallenge)
-        CorrectAnswer
-      } else {
-        persist(ChallengeSubmitted(answer))(
-          ev => increaseAttempts
-        )
-        IncorrectAnswer
+    case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
+    case ans @ PlayerLogic.Answer(_, _) =>
+      val foo = for {
+        answer <- answerChallenge(ans)(state)
+      } yield {
+        val (newState, ch) = answer.run(state).value
+        persist(
+          StateModified(state)
+        )(ev => {
+            state = newState
+          })
+        ch
       }
-      sender ! resp
-    case PlayerActor.Next(lnk) =>
-      val (ch, ans) = nextChallenge(1)
-      currentAnswer = ans
-      challenge = ch
-      sender ! ch
-    case PlayerActor.Stats =>
+      sender ! foo
+    case PlayerLogic.Next(lnk) =>
+      sender ! state.chans.challenge
+    case PlayerLogic.Stats =>
       sender ! PlayerStats(2, 300)
-    case PlayerActor.Current =>
-      sender ! link
+    case PlayerLogic.Current =>
+      sender ! state.chans.challenge.title
   }
 
   def gameFinished: Receive = {
@@ -95,27 +71,6 @@ class PlayerActor
   }
 
   override def receiveCommand: Receive = readyToPlay
-
-  override def receiveRecover: Receive = {
-    case GameStarted => startGame
-    case ChallengePrepared(challenge) =>
-    case ChallengeSubmitted(answer) => increaseAttempts
-    case ChallengeResolved => resolveChallenge
-  }
-
-  private def startGame = {
-    points = 0
-    context become playing
-  }
-
-  private def increaseAttempts = attempts += 1
-
-  private def increasePoints = points += 100
-
-  private def resolveChallenge = {
-    increaseAttempts
-    increasePoints
-    challenge
-  }
+  override def receiveRecover: Receive = { case _ => }
 
 }
