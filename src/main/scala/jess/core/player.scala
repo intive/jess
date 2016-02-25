@@ -2,7 +2,7 @@ package com.blstream.jess
 package core.state
 
 import cats.SemigroupK
-import cats.data.{ NonEmptyList, State, Xor }
+import cats.data.{ NonEmptyList, State, StateT, Xor }
 import cats.syntax.xor._
 
 import core._
@@ -41,7 +41,7 @@ final case object AlreadyTakenNickError extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 final case object IncorrectAnswer extends SomeError
-
+final case class WrongAnswer(msg: String = "wrong answer") extends SomeError
 trait NickValidator {
 
   // implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
@@ -83,16 +83,52 @@ trait PlayerLogic {
         )
       }
 
+  val ansCh: Answer => State[PlayerState, Xor[WrongAnswer, Unit]] = answer => for {
+    foo <- State.get[PlayerState]
+  } yield {
+    if (foo.chans.answer == answer.answer) {
+      ().right
+    } else {
+      WrongAnswer().left
+    }
+
+    /*
+//      foo <- State.pure[PlayerState, Xor[SomeError, Challenge]](Challenge("d", "D", "f").right)
+      f <- for {
+        bar <- foo
+              } yield bar
+    } yield {
+      foo
+    }
+
+     */
+  }
+
+  val answerChallenge1: Answer => State[PlayerState, Xor[SomeError, Challenge]] =
+    answer => for {
+      e <- incrementAttempts
+      a <- ansCh(answer)
+      foo <- a match {
+        case Xor.Right(_) => for {
+          _ <- updatePoints
+          ch <- newChallenge
+          } yield ch
+        case Xor.Left(xx) => State((s: PlayerState) => (s, xx.left))
+      }
+       
+    } yield foo
+
   val answerChallenge: Answer => PlayerState => Xor[SomeError, State[PlayerState, Challenge]] =
     answer => ps => {
       for {
         _ <- incrementAttempts.right
         _ <- checkAnswer(answer)(ps)
       } yield {
-        for {
-          _ <- updatePoints
-          challenge <- newChallenge
-        } yield challenge
+       // for {
+         // _ <- updatePoints
+       //   challenge <- newChallenge
+       // } yield
+        State( s => (s, Challenge("d", "ds", "f")))
       }
     }
 
@@ -102,15 +138,15 @@ trait PlayerLogic {
       else IncorrectAnswer.left
     }
 
-  private val updatePoints: State[PlayerState, Unit] =
-    State(ps => (ps.copy(points = ps.points + 10), ()))
+  private val updatePoints: State[PlayerState, Xor[SomeError, Unit]] =
+    State(ps => (ps.copy(points = ps.points + 10), ().right))
 
-  private val newChallenge: State[PlayerState, Challenge] =
+  private val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] =
     State(ps => {
       val ch = nextChallenge(ps.chans.level + 1)
-      (ps.copy(chans = ch), ch.challenge)
+      (ps.copy(chans = ch), ch.challenge.right)
     })
 
-  private val incrementAttempts: State[PlayerState, Unit] =
-    State(ps => (ps.copy(attempts = ps.attempts + 1), ()))
+  private val incrementAttempts: State[PlayerState, Int] =
+    State(ps => (ps.copy(attempts = ps.attempts + 1), ps.attempts))
 }
