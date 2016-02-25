@@ -58,15 +58,15 @@ class PlayerActor
         ch
       }
       sender ! foo
-    // case PlayerLogic.Next(lnk) =>
+    //case PlayerLogic.Next(lnk) =>
     //   val chans = nextChallenge(1)
     //   currentAnswer = chans.answer
     //   challenge = chans.challenge
     //   sender ! challenge
     // case PlayerLogic.Stats =>
     //   sender ! PlayerStats(2, 300)
-    // case PlayerLogic.Current =>
-    //   sender ! link
+    case PlayerLogic.Current =>
+      sender ! state.chans.challenge
   }
 
   def gameFinished: Receive = {
