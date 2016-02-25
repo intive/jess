@@ -7,9 +7,9 @@ import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import akka.http.scaladsl.server.Directives._
 import akka.pattern._
 import akka.util.Timeout
-import cats.data.ValidatedNel
+import cats.data.Xor
+import cats.data.Xor.Left
 import core.state.{ Challenge, SomeError }
-import cats.std.list._
 import core.{ CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats }
 import spray.json._
 
@@ -86,10 +86,10 @@ trait GameRoute {
         } ~ post {
           entity(as[PostAnswerRequest]) { par =>
             complete {
-              val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[ResponseAnswer]
+              val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
               resp.map {
-                case CorrectAnswer => StatusCodes.OK -> "Correct Answer"
-                case IncorrectAnswer => StatusCodes.BadRequest -> "Wrong Answer"
+                case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
+                case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
               }
             }
           }
@@ -104,12 +104,12 @@ trait GameRoute {
     )
 
   private val makeChallengeResponse: String => Future[HttpResponse] = nick => {
-    val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[ValidatedNel[SomeError, Challenge]]
+    val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
 
     respF.map {
       case resp => resp.fold(
         err =>
-          HttpResponse(StatusCodes.BadRequest, entity = err.unwrap.mkString("|dupa|")),
+          HttpResponse(StatusCodes.BadRequest, entity = err.toString),
         challenge => HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
           meta = makeMeta(nick)("link_change_me"),
           challenge

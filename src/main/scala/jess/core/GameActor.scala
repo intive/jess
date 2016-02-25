@@ -49,7 +49,7 @@ class GameActor
     case GameActor.Join(nick) =>
       (getRef(nick) ? PlayerLogic.StartGame(nick)) pipeTo sender
     case GameActor.GetChallenge(nick, link) =>
-      (getRef(nick) ? PlayerLogic.Next(link)).mapTo[Challenge] pipeTo sender
+      (getRef(nick) ? PlayerLogic.Next(link)) pipeTo sender
     case GameActor.PostChallenge(nick, link, answer) =>
       (getRef(nick) ? PlayerLogic.Answer(link, answer)) pipeTo sender
     case GameActor.Stats(nick) =>
@@ -57,7 +57,7 @@ class GameActor
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time))
       stats pipeTo sender
     case GameActor.Current(nick) =>
-      (getRef(nick) ? PlayerLogic.Current).mapTo[JessLink] pipeTo sender
+      (getRef(nick) ? PlayerLogic.Current) pipeTo sender
   }
 }
 
@@ -70,7 +70,7 @@ trait Cache {
       cache(nick)
     } else {
       val ref = context.actorOf(Props[PlayerActor], nick)
-      cache += (nick → ref)
+      cache += (nick -> ref)
       ref
     }
   }

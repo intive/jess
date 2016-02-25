@@ -47,7 +47,7 @@ class PlayerActor
     case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
     case ans @ PlayerLogic.Answer(_, _) =>
       val foo = for {
-        answer <- answerChallenge(ans)
+        answer <- answerChallenge(ans)(state)
       } yield {
         val (newState, ch) = answer.run(state).value
         persist(
@@ -55,6 +55,7 @@ class PlayerActor
         )(ev => {
             state = newState
           })
+        ch
       }
       sender ! foo
     // case PlayerLogic.Next(lnk) =>

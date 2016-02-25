@@ -2,10 +2,9 @@ package com.blstream.jess
 package core.state
 
 import cats.SemigroupK
-import cats.data.{ StateT, XorT, NonEmptyList, State, ValidatedNel, Xor }
-import cats.std.list._
+import cats.data.{ NonEmptyList, State, Xor }
 import cats.syntax.xor._
-import cats.syntax.cartesian._
+
 import core._
 
 final case class PlayerState(
@@ -84,25 +83,34 @@ trait PlayerLogic {
         )
       }
 
-  val answerChallenge: Answer => Xor[SomeError, State[PlayerState, Challenge]] = answer => for {
-    _ <- incrementAttempts.right
-    _ <- checkAnswer(answer)
-    _ <- updatePoints.right
-    challenge <- newChallenge.right
-  } yield challenge
-
-  private val checkAnswer: Answer => Xor[SomeError, State[PlayerState, Challenge]] = answer => {
-
-    val x = for {
-      ps <- State.get[PlayerState]
-    } yield {
-      if (answer.answer == ps.chans.answer) ps.right else IncorrectAnswer.left
+  val answerChallenge: Answer => PlayerState => Xor[SomeError, State[PlayerState, Challenge]] =
+    answer => ps => {
+      for {
+        _ <- incrementAttempts.right
+        _ <- checkAnswer(answer)(ps)
+      } yield {
+        for {
+          _ <- updatePoints
+          challenge <- newChallenge
+        } yield challenge
+      }
     }
-  }
-  private val updatePoints: State[PlayerState, Unit] = State(ps => (ps.copy(points = ps.points + 10), ()))
-  private val newChallenge: State[PlayerState, Challenge] = State(ps => {
-    val ch = nextChallenge(ps.chans.level + 1)
-    (ps.copy(chans = ch), ch.challenge)
-  })
-  private val incrementAttempts: State[PlayerState, Unit] = State(ps => (ps.copy(attempts = ps.attempts + 1), ()))
+
+  private val checkAnswer: Answer => PlayerState => Xor[SomeError, Answer] =
+    answer => ps => {
+      if (answer.answer == ps.chans.answer) answer.right
+      else IncorrectAnswer.left
+    }
+
+  private val updatePoints: State[PlayerState, Unit] =
+    State(ps => (ps.copy(points = ps.points + 10), ()))
+
+  private val newChallenge: State[PlayerState, Challenge] =
+    State(ps => {
+      val ch = nextChallenge(ps.chans.level + 1)
+      (ps.copy(chans = ch), ch.challenge)
+    })
+
+  private val incrementAttempts: State[PlayerState, Unit] =
+    State(ps => (ps.copy(attempts = ps.attempts + 1), ()))
 }
