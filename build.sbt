@@ -20,7 +20,8 @@ libraryDependencies ++= {
     "ch.qos.logback" % "logback-classic" % "1.0.3",
     "org.typelevel" %% "cats" % "0.4.1",
     "org.scalatest" %% "scalatest" % "2.2.6" % "test",
-    "com.typesafe.akka" % "akka-http-testkit-experimental_2.11" % akkaHttpVersion % "test"
+    "com.typesafe.akka" % "akka-http-testkit-experimental_2.11" % akkaHttpVersion % "test",
+    "com.ironcorelabs" %% "cats-scalatest" % "1.1.2" % "test"
   )
 }
 
