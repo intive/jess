@@ -2,7 +2,6 @@ package com.blstream.jess
 package core
 
 import akka.persistence.PersistentActor
-import cats.syntax.validated._
 import core.state.{ Challenge, NickValidator, PlayerLogic, PlayerState, StateTransitionError }
 import cats.syntax.xor._
 
@@ -47,19 +46,14 @@ class PlayerActor
     case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
     case ans @ PlayerLogic.Answer(_, _) =>
 
-      val (nps, resp) = answerChallenge1(ans).run(state).value
-
-      sender ! resp
-
-      state = nps
+      val (nps, challenge) = answerChallenge(ans).run(state).value
 
       persist(
         StateModified(state)
       )(ev => {
           state = nps
+          sender ! challenge
         })
-
-      
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge
     case PlayerLogic.Stats =>

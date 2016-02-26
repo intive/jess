@@ -83,7 +83,7 @@ trait PlayerLogic {
         )
       }
 
-  val ansCh: Answer => State[PlayerState, Xor[WrongAnswer, Unit]] = answer => for {
+  val checkAnswer: Answer => State[PlayerState, Xor[WrongAnswer, Unit]] = answer => for {
     foo <- State.get[PlayerState]
   } yield {
     if (foo.chans.answer == answer.answer) {
@@ -91,54 +91,22 @@ trait PlayerLogic {
     } else {
       WrongAnswer().left
     }
-
-    /*
-//      foo <- State.pure[PlayerState, Xor[SomeError, Challenge]](Challenge("d", "D", "f").right)
-      f <- for {
-        bar <- foo
-              } yield bar
-    } yield {
-      foo
-    }
-
-     */
   }
 
-  val answerChallenge1: Answer => State[PlayerState, Xor[SomeError, Challenge]] =
+  val answerChallenge: Answer => State[PlayerState, Xor[SomeError, Challenge]] =
     answer => for {
-      e <- incrementAttempts
-      a <- ansCh(answer)
-      foo <- a match {
-        case Xor.Right(_) => for {
+      _ <- incrementAttempts
+      ans <- checkAnswer(answer)
+      challenge <- ans.fold(
+        err => State((s: PlayerState) => (s, err.left)),
+        _ => for {
           _ <- updatePoints
-          ch <- newChallenge
-          } yield ch
-        case Xor.Left(xx) => State((s: PlayerState) => (s, xx.left))
-      }
-       
-    } yield foo
+          challenge <- newChallenge
+        } yield challenge
+      )
+    } yield challenge
 
-  val answerChallenge: Answer => PlayerState => Xor[SomeError, State[PlayerState, Challenge]] =
-    answer => ps => {
-      for {
-        _ <- incrementAttempts.right
-        _ <- checkAnswer(answer)(ps)
-      } yield {
-       // for {
-         // _ <- updatePoints
-       //   challenge <- newChallenge
-       // } yield
-        State( s => (s, Challenge("d", "ds", "f")))
-      }
-    }
-
-  private val checkAnswer: Answer => PlayerState => Xor[SomeError, Answer] =
-    answer => ps => {
-      if (answer.answer == ps.chans.answer) answer.right
-      else IncorrectAnswer.left
-    }
-
-  private val updatePoints: State[PlayerState, Xor[SomeError, Unit]] =
+  val updatePoints: State[PlayerState, Xor[SomeError, Unit]] =
     State(ps => (ps.copy(points = ps.points + 10), ().right))
 
   private val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] =
