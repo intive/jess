@@ -41,10 +41,8 @@ final case object AlreadyTakenNickError extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 final case object IncorrectAnswer extends SomeError
-final case class WrongAnswer(msg: String = "wrong answer") extends SomeError
-trait NickValidator {
 
-  // implicit val nelSemigroup = SemigroupK[NonEmptyList].algebra[SomeError]
+trait NickValidator {
 
   val validate: String => Xor[SomeError, String] =
     nick =>
@@ -83,13 +81,13 @@ trait PlayerLogic {
         )
       }
 
-  val checkAnswer: Answer => State[PlayerState, Xor[WrongAnswer, Unit]] = answer => for {
+  val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] = answer => for {
     foo <- State.get[PlayerState]
   } yield {
     if (foo.chans.answer == answer.answer) {
       ().right
     } else {
-      WrongAnswer().left
+      IncorrectAnswer.left
     }
   }
 
