@@ -34,5 +34,6 @@ libraryDependencies ++= {
 
 scalacOptions ++= Seq(
   "-feature",
-  "-language:postfixOps"
+  "-language:postfixOps",
+  "-language:higherKinds"
 )

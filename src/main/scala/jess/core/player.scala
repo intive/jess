@@ -6,6 +6,7 @@ import cats.data.{ NonEmptyList, State, StateT, Xor }
 import cats.syntax.xor._
 
 import core._
+import monocle.macros.GenLens
 
 final case class PlayerState(
   nick: Option[String],
@@ -53,7 +54,7 @@ trait NickValidator {
 
   private val notEmpty: String => Xor[SomeError, String] =
     nick =>
-      if (nick.isEmpty || nick == "foo") EmptyNickError.left
+      if (nick.isEmpty) EmptyNickError.left
       else nick.right
 
   private val unique: String => Xor[SomeError, String] =
@@ -81,16 +82,6 @@ trait PlayerLogic {
         )
       }
 
-  val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] = answer => for {
-    foo <- State.get[PlayerState]
-  } yield {
-    if (foo.chans.answer == answer.answer) {
-      ().right
-    } else {
-      IncorrectAnswer.left
-    }
-  }
-
   val answerChallenge: Answer => State[PlayerState, Xor[SomeError, Challenge]] =
     answer => for {
       _ <- incrementAttempts
@@ -104,15 +95,45 @@ trait PlayerLogic {
       )
     } yield challenge
 
-  val updatePoints: State[PlayerState, Xor[SomeError, Unit]] =
-    State(ps => (ps.copy(points = ps.points + 10), ().right))
+  val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] = answer => for {
+    foo <- State.get[PlayerState]
+  } yield {
+    if (foo.chans.answer == answer.answer) {
+      ().right
+    } else {
+      IncorrectAnswer.left
+    }
+  }
 
-  private val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] =
-    State(ps => {
-      val ch = nextChallenge(ps.chans.level + 1)
-      (ps.copy(chans = ch), ch.challenge.right)
-    })
+  val updatePoints: State[PlayerState, Xor[SomeError, Int]] = State { ps =>
+    {
+      val _ps = incPoints(ps)
+      (_ps, _ps.points.right)
+    }
+  }
 
-  private val incrementAttempts: State[PlayerState, Int] =
-    State(ps => (ps.copy(attempts = ps.attempts + 1), ps.attempts))
+  val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] = State { ps =>
+    {
+      val chans = nextChallenge(ps.chans.level + 1)
+      val _ps = setNewChallenge(ps)(chans.challenge)
+      (_ps, _ps.chans.challenge.right)
+    } 
+  }
+
+  val incrementAttempts: State[PlayerState, Int] = State { ps =>
+    {
+      val _ps = incAttempt(ps)
+      (_ps, _ps.attempts)
+    }
+  }
+
+  private val _attempts = GenLens[PlayerState](_.attempts)
+  private val _points = GenLens[PlayerState](_.points)
+  private val _chans = GenLens[PlayerState](_.chans)
+  private val _challenge = GenLens[ChallengeWithAnswer](_.challenge)
+
+  private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(x => x + 1)(ps)
+  private val incPoints: PlayerState => PlayerState = ps => _points.modify(x => x + 10)(ps)
+  private val setNewChallenge: PlayerState => Challenge => PlayerState = ps => ch => (_chans ^|-> _challenge).set(ch)(ps)
 }
+
