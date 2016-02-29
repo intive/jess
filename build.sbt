@@ -9,6 +9,7 @@ scalaVersion := "2.11.7"
 libraryDependencies ++= {
   val akkaHttpVersion = "2.0.3"
   val akkaVersion = "2.4.1"
+  val monocleVersion = "1.2.0"
   Seq(
     "com.typesafe.akka" % "akka-stream-experimental_2.11" % akkaHttpVersion withSources(),
     "com.typesafe.akka" % "akka-http-core-experimental_2.11" % akkaHttpVersion withSources(),
@@ -21,11 +22,18 @@ libraryDependencies ++= {
     "org.typelevel" %% "cats" % "0.4.1",
     "org.scalatest" %% "scalatest" % "2.2.6" % "test",
     "com.typesafe.akka" % "akka-http-testkit-experimental_2.11" % akkaHttpVersion % "test",
-    "com.ironcorelabs" %% "cats-scalatest" % "1.1.2" % "test"
+    "com.ironcorelabs" %% "cats-scalatest" % "1.1.2" % "test",
+    "com.github.julien-truffaut"  %%  "monocle-core"    % monocleVersion,
+    "com.github.julien-truffaut"  %%  "monocle-generic" % monocleVersion,
+    "com.github.julien-truffaut"  %%  "monocle-macro"   % monocleVersion,
+    "com.github.julien-truffaut"  %%  "monocle-state"   % monocleVersion,
+    "com.github.julien-truffaut"  %%  "monocle-refined" % monocleVersion,
+    "com.github.julien-truffaut"  %%  "monocle-law"     % monocleVersion % "test"
   )
 }
 
 scalacOptions ++= Seq(
   "-feature",
-  "-language:postfixOps"
+  "-language:postfixOps",
+  "-language:higherKinds"
 )

@@ -36,6 +36,7 @@ class PlayerLogicSpec
     resp should be(right)
 
   }
+
   test("check answer which is incorrect") {
     val (newState, resp) = checkAnswer(PlayerLogic.Answer("link", "IncorrectAnswer")).run(ps).value
 
@@ -44,4 +45,17 @@ class PlayerLogicSpec
 
   }
 
+  test("increment attempt") {
+    val (newState, resp) = incrementAttempts.run(ps).value
+
+    newState should have('attempts(1))
+    resp should ===(1)
+
+  }
+
+  test("update challenge") {
+    val (newState, challenge) = newChallenge.run(ps).value
+
+    challenge should be(right)
+  }
 }
