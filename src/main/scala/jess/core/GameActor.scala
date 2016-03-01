@@ -5,8 +5,6 @@ import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 
 import akka.pattern._
 import akka.util.Timeout
-import cats.data.Xor
-import core.state.Challenge
 
 import state._
 
@@ -15,23 +13,16 @@ import scala.concurrent.duration._
 case class Stats(attempts: Int, time: Long)
 
 sealed trait ResponseAnswer
-
 case object CorrectAnswer extends ResponseAnswer
-
 case object IncorrectAnswer extends ResponseAnswer
 
 object GameActor {
 
   sealed trait GameMessages
-
   case class Join(nick: Nick) extends GameMessages
-
   case class GetChallenge(nick: Nick, link: JessLink) extends GameMessages
-
   case class PostChallenge(nick: Nick, link: JessLink, answer: String) extends GameMessages
-
   case class Stats(nick: Nick) extends GameMessages
-
   case class Current(nick: Nick) extends GameMessages
 
 }
