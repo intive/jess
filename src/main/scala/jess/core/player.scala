@@ -117,7 +117,7 @@ trait PlayerLogic {
       val chans = nextChallenge(ps.chans.level + 1)
       val _ps = setNewChallenge(ps)(chans.challenge)
       (_ps, _ps.chans.challenge.right)
-    } 
+    }
   }
 
   val incrementAttempts: State[PlayerState, Int] = State { ps =>

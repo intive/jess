@@ -5,6 +5,7 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
@@ -65,36 +66,13 @@ trait GameRoute {
 
   lazy val gameRoute =
     pathPrefix("game" / Segment) { nick =>
-      (path("start") & get) {
-        complete {
-          makeChallengeResponse(nick)
+      startGame(nick) ~
+        getChallenge(nick) ~
+        getCurrentChallenge(nick) ~
+        path("challenge" / Segment) { challenge =>
+          getChallengeWithUuid(nick)(challenge) ~
+            postChallenge(nick)(challenge)
         }
-      } ~ (path("challenge") & get) {
-        complete {
-          makeChallengeStatsResponse(nick)
-        }
-      } ~ (path("challenge" / "current") & get) {
-        complete {
-          makeCurrentChallengeResponse(nick)
-        }
-      } ~ path("challenge" / Segment) { challenge =>
-        get {
-          complete {
-            import ChallengeFormat._
-            (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
-          }
-        } ~ post {
-          entity(as[PostAnswerRequest]) { par =>
-            complete {
-              val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
-              resp.map {
-                case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
-                case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
-              }
-            }
-          }
-        }
-      }
     }
 
   private val makeMeta: String => JessLink => Meta = nick => link =>
@@ -102,6 +80,53 @@ trait GameRoute {
       current = s"/game/$nick/challenge/$link",
       stats = s"/game/$nick/challenge"
     )
+
+  private lazy val startGame: String => Route =
+    nick =>
+      (path("start") & get) {
+        complete {
+          makeChallengeResponse(nick)
+        }
+      }
+
+  private lazy val getChallenge: String => Route =
+    nick =>
+      (path("challenge") & get) {
+        complete {
+          makeChallengeStatsResponse(nick)
+        }
+      }
+
+  private lazy val getCurrentChallenge: String => Route =
+    nick =>
+      (path("challenge" / "current") & get) {
+        complete {
+          makeCurrentChallengeResponse(nick)
+        }
+      }
+
+  private lazy val getChallengeWithUuid: String => String => Route =
+    nick => challenge =>
+      get {
+        complete {
+          import ChallengeFormat._
+          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
+        }
+      }
+
+  private lazy val postChallenge: String => String => Route =
+    nick => challenge =>
+      post {
+        entity(as[PostAnswerRequest]) { par =>
+          complete {
+            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
+            resp.map {
+              case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
+              case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
+            }
+          }
+        }
+      }
 
   private val makeChallengeResponse: String => Future[HttpResponse] = nick => {
     val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
