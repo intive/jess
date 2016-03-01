@@ -2,12 +2,13 @@ package com.blstream.jess
 package api
 
 import akka.actor.{ ActorSystem, Props }
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, RequestEntity, StatusCodes }
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
 import com.blstream.jess.core.GameActor
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
+
 class GameRouteSpec
     extends WordSpec
     with GameRoute
@@ -37,6 +38,22 @@ class GameRouteSpec
     "get stats about game progress" in {
       Get("/game/marcin/challenge") ~> gameRoute ~> check {
         status === StatusCodes.OK
+      }
+    }
+  }
+
+  "Play game happy path" should {
+    "start game" in {
+      Get("/game/foo/start") ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("challenge")
+      }
+    }
+    "resolve first challenge" in {
+      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "233168"}""")
+      Post("/game/foo/challenge/link_change_me", entity) ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("Correct Answer")
       }
     }
   }
