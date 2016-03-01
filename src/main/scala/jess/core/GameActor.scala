@@ -5,6 +5,7 @@ import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 
 import akka.pattern._
 import akka.util.Timeout
+import cats.data.Xor
 import core.state.Challenge
 
 import state._
@@ -53,6 +54,7 @@ class GameActor
     case GameActor.PostChallenge(nick, link, answer) =>
       (getRef(nick) ? PlayerLogic.Answer(link, answer)) pipeTo sender
     case GameActor.Stats(nick) =>
+      //TODO when state transition error comes then class cast exception is thrown
       val playerStats = (getRef(nick) ? PlayerLogic.Stats).mapTo[PlayerStats]
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time))
       stats pipeTo sender

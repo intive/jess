@@ -86,15 +86,14 @@ trait GameRoute {
       (path("start") & get) {
         complete {
           val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
-
           respF.map {
             case resp => resp.fold(
-              err =>
-                HttpResponse(StatusCodes.BadRequest, entity = err.toString),
-              challenge => HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-                meta = makeMeta(nick)("link_change_me"),
-                challenge
-              ).toJson.prettyPrint)
+              err => HttpResponse(StatusCodes.BadRequest, entity = err.toString),
+              challenge =>
+                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+                  meta = makeMeta(nick)("link_change_me"),
+                  challenge
+                ).toJson.prettyPrint)
             )
           }
         }

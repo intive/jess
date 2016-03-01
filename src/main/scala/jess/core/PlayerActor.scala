@@ -45,9 +45,7 @@ class PlayerActor
   def playing: Receive = {
     case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
     case ans @ PlayerLogic.Answer(_, _) =>
-
       val (nps, challenge) = answerChallenge(ans).run(state).value
-
       persist(
         StateModified(state)
       )(ev => {
