@@ -2,7 +2,7 @@ package com.blstream.jess
 package core
 
 import akka.persistence.PersistentActor
-import core.state.{ Challenge, NickValidator, PlayerLogic, PlayerState, StateTransitionError }
+import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
 import cats.syntax.xor._
 
 case class PlayerStats(attempts: Int, time: Long)
@@ -39,7 +39,6 @@ class PlayerActor
       sender ! foo
 
     case _ => sender ! StateTransitionError("Start game first").left
-
   }
 
   def playing: Receive = {
@@ -55,7 +54,7 @@ class PlayerActor
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge
     case PlayerLogic.Stats =>
-      sender ! PlayerStats(2, 300)
+      sender ! PlayerStats(state.attempts, state.points)
     case PlayerLogic.Current =>
       sender ! state.chans.challenge.title
   }
