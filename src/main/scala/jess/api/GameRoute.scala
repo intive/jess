@@ -85,7 +85,18 @@ trait GameRoute {
     nick =>
       (path("start") & get) {
         complete {
-          makeChallengeResponse(nick)
+          val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
+
+          respF.map {
+            case resp => resp.fold(
+              err =>
+                HttpResponse(StatusCodes.BadRequest, entity = err.toString),
+              challenge => HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+                meta = makeMeta(nick)("link_change_me"),
+                challenge
+              ).toJson.prettyPrint)
+            )
+          }
         }
       }
 
@@ -93,7 +104,12 @@ trait GameRoute {
     nick =>
       (path("challenge") & get) {
         complete {
-          makeChallengeStatsResponse(nick)
+          for {
+            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+            stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
+          } yield {
+            ChallengeStatsResponse(meta = makeMeta(nick)(jessLink), stats)
+          }
         }
       }
 
@@ -101,7 +117,12 @@ trait GameRoute {
     nick =>
       (path("challenge" / "current") & get) {
         complete {
-          makeCurrentChallengeResponse(nick)
+          for {
+            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+            challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
+          } yield {
+            ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
+          }
         }
       }
 
@@ -127,36 +148,6 @@ trait GameRoute {
           }
         }
       }
-
-  private val makeChallengeResponse: String => Future[HttpResponse] = nick => {
-    val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
-
-    respF.map {
-      case resp => resp.fold(
-        err =>
-          HttpResponse(StatusCodes.BadRequest, entity = err.toString),
-        challenge => HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-          meta = makeMeta(nick)("link_change_me"),
-          challenge
-        ).toJson.prettyPrint)
-      )
-    }
-
-  }
-
-  private val makeChallengeStatsResponse: String => Future[ChallengeStatsResponse] = nick => for {
-    jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-    stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
-  } yield {
-    ChallengeStatsResponse(meta = makeMeta(nick)(jessLink), stats)
-  }
-
-  private val makeCurrentChallengeResponse: String => Future[ChallengeResponse] = nick => for {
-    jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-    challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
-  } yield {
-    ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
-  }
 
   implicit val timeout: Timeout
 
