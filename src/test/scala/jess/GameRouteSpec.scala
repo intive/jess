@@ -46,7 +46,17 @@ class GameRouteSpec
     "start game" in {
       Get("/game/foo/start") ~> gameRoute ~> check {
         status === StatusCodes.OK
-        responseAs[String] should include("challenge")
+        responseAs[String] should include("meta")
+        responseAs[String] should include("link_change_me")
+        //        responseAs[String] should not include "challenge"
+      }
+    }
+    "get first challenge" in {
+      Get("/game/foo/challenge/link_change_me") ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("title")
+        responseAs[String] should include("description")
+        responseAs[String] should include("assignment")
       }
     }
     "resolve first challenge" in {
@@ -56,6 +66,15 @@ class GameRouteSpec
         responseAs[String] should include("Correct Answer")
       }
     }
+    "get current challenge" in {
+      Get("/game/foo/challenge/current") ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("title")
+        responseAs[String] should include("description")
+        responseAs[String] should include("assignment")
+      }
+    }
+    //TODO post current challenge
   }
 
 }
