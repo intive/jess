@@ -2,12 +2,13 @@ package com.blstream.jess
 package api
 
 import akka.actor.{ ActorSystem, Props }
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, RequestEntity, StatusCodes }
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
 import com.blstream.jess.core.GameActor
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
+
 class GameRouteSpec
     extends WordSpec
     with GameRoute
@@ -37,6 +38,42 @@ class GameRouteSpec
     "get stats about game progress" in {
       Get("/game/marcin/challenge") ~> gameRoute ~> check {
         status === StatusCodes.OK
+      }
+    }
+  }
+
+  "Play game happy path" should {
+    "start game" in {
+      Get("/game/foo/start") ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("meta")
+        responseAs[String] should include("link_change_me")
+        //        responseAs[String] should not include "challenge"
+      }
+    }
+    "get first challenge" in {
+      Get("/game/foo/challenge/link_change_me") ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("title")
+        responseAs[String] should include("Multiples of 3 and 5")
+        responseAs[String] should include("description")
+        responseAs[String] should include("assignment")
+      }
+    }
+    "resolve first challenge" in {
+      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "233168"}""")
+      Post("/game/foo/challenge/link_change_me", entity) ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("Correct Answer")
+      }
+    }
+    "get current challenge" in {
+      Get("/game/foo/challenge/current") ~> gameRoute ~> check {
+        status === StatusCodes.OK
+        responseAs[String] should include("title")
+        responseAs[String] should include("Multiply level number")
+        responseAs[String] should include("description")
+        responseAs[String] should include("assignment")
       }
     }
   }

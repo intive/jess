@@ -16,32 +16,24 @@ final case class PlayerState(
 )
 
 final case class ChallengeWithAnswer(level: Int, challenge: Challenge, answer: String)
-
 final case class Challenge(title: String, description: String, assignment: String)
 
 object PlayerLogic {
 
   sealed trait PlayerAction
-
   case class StartGame(nick: String) extends PlayerAction
-
   case class Next(link: JessLink) extends PlayerAction
-
   case class Answer(link: JessLink, answer: String) extends PlayerAction
-
   case object Current extends PlayerAction
-
   case object Stats extends PlayerAction
 
 }
 sealed trait SomeError
-
-final case object EmptyNickError extends SomeError
-
-final case object AlreadyTakenNickError extends SomeError
+case object EmptyNickError extends SomeError
+case object AlreadyTakenNickError extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
-final case object IncorrectAnswer extends SomeError
+case object IncorrectAnswer extends SomeError
 
 trait NickValidator {
 
@@ -117,7 +109,7 @@ trait PlayerLogic {
       val chans = nextChallenge(ps.chans.level + 1)
       val _ps = setNewChallenge(ps)(chans.challenge)
       (_ps, _ps.chans.challenge.right)
-    } 
+    }
   }
 
   val incrementAttempts: State[PlayerState, Int] = State { ps =>
