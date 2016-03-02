@@ -18,6 +18,8 @@ class PlayerActor
     with PlayerLogic
     with NickValidator {
 
+  val scorePublisher = context.actorSelection("akka://jess/user/ScorePublisher")
+
   var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
 
   override def persistenceId: String = "player-actor"
@@ -50,6 +52,7 @@ class PlayerActor
       )(ev => {
           state = nps
           sender ! challenge
+          scorePublisher ! core.score.ScorePublisher.Publish(core.score.Score("Marcin", 1))
         })
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge

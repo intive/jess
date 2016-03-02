@@ -5,6 +5,7 @@ import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import api.{ GameRoute, HealthCheckRoute, Websocket }
+import core.score.{ ScoreService, ScorePublisher }
 import com.typesafe.scalalogging.LazyLogging
 import core.GameActor
 
@@ -16,9 +17,11 @@ object Main
     with JessHttpService
     with GameRoute
     with HealthCheckRoute
-    with Websocket {
+    with Websocket
+    with ScoreService {
 
   lazy val gameActorRef = system.actorOf(Props[GameActor], "GameActor")
+  lazy val scorePublisherActor = system.actorOf(Props[ScorePublisher], "ScorePublisher")
 }
 
 abstract class Main

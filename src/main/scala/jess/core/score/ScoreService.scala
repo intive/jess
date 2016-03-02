@@ -1,21 +1,29 @@
 package com.blstream.jess
 package core.score
 
-import akka.actor.{ ActorSystem, Props }
-import akka.stream.Materializer
+import akka.actor.{ ActorRef, ActorSystem, Props }
+import akka.http.scaladsl.model.ws.{ Message, TextMessage }
 import akka.stream.actor.ActorPublisher
-import akka.stream.scaladsl.{ Sink, Source }
+import akka.stream.scaladsl.{ Flow, Sink, Source }
+import com.typesafe.scalalogging.LazyLogging
 
-trait ScoreService {
+trait ScoreService extends LazyLogging {
 
-  implicit val system: ActorSystem
-  implicit val materializer: Materializer
+  def scorePublisherActor: ActorRef
 
-  val scorePublisherActor = system.actorOf(Props[ScorePublisher], name = "ScorePublisher")
-  val scorePublisher = ActorPublisher[Score](scorePublisherActor)
+  def system: ActorSystem
+   
 
-  Source.actorPublisher(Props[ScorePublisher])
+  def scoreFlow: Flow[Message, Message, _] = {
+    val actor = system.actorOf(Props[ScorePublisher])
+    val ap = ActorPublisher[Score](actor)
+    
+    val src = Source.fromPublisher(ap)
 
-  Source.fromPublisher(scorePublisher).runWith(Sink.foreach(println))
+    Flow.fromSinkAndSource(Sink.ignore, src.map(score => TextMessage.Strict(s"$score")))
+  }
 
+ // def websocketFlow: Flow[Message, Message, _] = {
+
+//}
 }
