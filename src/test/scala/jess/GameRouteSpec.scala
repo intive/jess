@@ -60,7 +60,7 @@ class GameRouteSpec
       }
     }
     "resolve first challenge" in {
-      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "233168"}""")
+      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "42"}""")
       Post("/game/foo/challenge/link_change_me", entity) ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("Correct Answer")

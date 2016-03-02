@@ -8,7 +8,7 @@ trait ChallengeService {
   private val challenges =
     List(
       ChallengeWithAnswer(
-        level = 1,
+        level = 3,
         Challenge(
           title = "Multiples of 3 and 5",
           description = """If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.""",
@@ -24,7 +24,7 @@ trait ChallengeService {
         ), answer = "4"
       ),
       ChallengeWithAnswer(
-        level = 3,
+        level = 1,
         Challenge(
           title = "The most important question",
           description = "This is a question about live",

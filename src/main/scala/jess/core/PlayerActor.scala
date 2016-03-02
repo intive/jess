@@ -5,7 +5,7 @@ import akka.persistence.PersistentActor
 import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
 import cats.syntax.xor._
 
-case class PlayerStats(attempts: Int, time: Long)
+case class PlayerStats(attempts: Int, time: Long, points: Long)
 
 sealed trait PlayerEvents
 
@@ -18,7 +18,7 @@ class PlayerActor
     with PlayerLogic
     with NickValidator {
 
-  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(1))).value
 
   override def persistenceId: String = "player-actor"
 
@@ -54,7 +54,7 @@ class PlayerActor
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge
     case PlayerLogic.Stats =>
-      sender ! PlayerStats(state.attempts, state.points)
+      sender ! PlayerStats(state.attempts, 10, state.points)
     case PlayerLogic.Current =>
       sender ! state.chans.challenge.title
   }

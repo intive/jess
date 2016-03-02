@@ -56,7 +56,7 @@ object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
 case class ChallengeStatsResponse(meta: Meta, stats: Stats)
 
 object ChallengeStatsResponse extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val statsFormat = jsonFormat2(core.Stats)
+  implicit val statsFormat = jsonFormat3(core.Stats)
   implicit val format = jsonFormat2(ChallengeStatsResponse.apply)
 }
 

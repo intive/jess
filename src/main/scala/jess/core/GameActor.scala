@@ -10,7 +10,7 @@ import state._
 
 import scala.concurrent.duration._
 
-case class Stats(attempts: Int, time: Long)
+case class Stats(attempts: Int, time: Long, points: Long)
 
 sealed trait ResponseAnswer
 case object CorrectAnswer extends ResponseAnswer
@@ -47,7 +47,7 @@ class GameActor
     case GameActor.Stats(nick) =>
       //TODO when state transition error comes then class cast exception is thrown
       val playerStats = (getRef(nick) ? PlayerLogic.Stats).mapTo[PlayerStats]
-      val stats = playerStats map (ps => Stats(ps.attempts, ps.time))
+      val stats = playerStats map (ps => Stats(ps.attempts, ps.time, ps.points))
       stats pipeTo sender
     case GameActor.Current(nick) =>
       (getRef(nick) ? PlayerLogic.Current) pipeTo sender
