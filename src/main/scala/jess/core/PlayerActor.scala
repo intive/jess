@@ -5,9 +5,10 @@ import akka.actor.ActorRef
 import akka.persistence.PersistentActor
 import score.ScoreRouter
 import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
+import com.blstream.jess.core.state._
 import cats.syntax.xor._
 
-case class PlayerStats(attempts: Int, time: Long, points: Long)
+case class PlayerStatus(attempts: Int, time: Long, points: Long)
 
 sealed trait PlayerEvents
 
@@ -16,17 +17,17 @@ case class StateModified(ps: PlayerState) extends PlayerEvents
 class PlayerActor(scoreRouter: ActorRef)
     extends PersistentActor
     with ChallengeService
-    with LinkService
+    with LinkGenerator
     with PlayerLogic
     with NickValidator {
 
-  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, challenge = nextChallenge(0))).value
 
   override def persistenceId: String = "player-actor"
 
   def readyToPlay: Receive = {
     case sg @ PlayerLogic.StartGame(_) =>
-      val foo = for {
+      val maybeChallenge = for {
         start <- startGame(sg)
       } yield {
         val (newState, ch) = start.run(state).value
@@ -40,7 +41,7 @@ class PlayerActor(scoreRouter: ActorRef)
           })
         ch
       }
-      sender ! foo
+      sender ! maybeChallenge
 
     case _ => sender ! StateTransitionError("Start game first").left
   }
@@ -58,13 +59,12 @@ class PlayerActor(scoreRouter: ActorRef)
           val (nick, points) = (state.nick.getOrElse("Unknown"), state.points)
           scoreRouter ! ScoreRouter.Score(nick, points)
         })
-
-    case PlayerLogic.Next(lnk) =>
-      sender ! state.chans.challenge
+    case PlayerLogic.GetChallenge(lnk) =>
+      sender ! state.challenge
     case PlayerLogic.Stats =>
-      sender ! PlayerStats(state.attempts, 10, state.points)
+      sender ! PlayerStatus(state.attempts, 10, state.points)
     case PlayerLogic.Current =>
-      sender ! state.chans.challenge.title
+      sender ! state.challenge.link
   }
 
   def gameFinished: Receive = {

@@ -1,38 +1,45 @@
 package com.blstream.jess
 package core
 
-import core.state.{ Challenge, ChallengeWithAnswer }
+import java.util.UUID
+
+import com.blstream.jess.core.state.Challenge
+
+trait LinkGenerator {
+  def nextLink = UUID.randomUUID().toString.replaceAll("-", "")
+}
 
 trait ChallengeService {
+  linkGen: LinkGenerator =>
 
   private val challenges =
     Vector(
-      ChallengeWithAnswer(
+      Challenge(
         level = 0,
-        Challenge(
-          title = "Multiples of 3 and 5",
-          description = """If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.""",
-          assignment = "Find the sum of all the multiples of 3 or 5 below 1000."
-        ), answer = "233168"
+        title = "Multiples of 3 and 5",
+        description = """If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.""",
+        assignment = "Find the sum of all the multiples of 3 or 5 below 1000.",
+        answer = "233168",
+        link = None
       ),
-      ChallengeWithAnswer(
+      Challenge(
         level = 1,
-        Challenge(
-          title = "Multiply level number",
-          description = "Level is complicated number, try multiplying it",
-          assignment = "Multiply level (2) by factor 2"
-        ), answer = "4"
+        title = "Multiply level number",
+        description = "Level is complicated number, try multiplying it",
+        assignment = "Multiply level (2) by factor 2",
+        answer = "4",
+        link = None
       ),
-      ChallengeWithAnswer(
+      Challenge(
         level = 2,
-        Challenge(
-          title = "The most important question",
-          description = "This is a question about live",
-          assignment = "What is the sense of live"
-        ), answer = "42"
+        title = "The most important question",
+        description = "This is a question about live",
+        assignment = "What is the sense of live",
+        answer = "42",
+        link = None
       )
     )
 
-  def nextChallenge(level: Int): ChallengeWithAnswer = challenges(level)
+  def nextChallenge(level: Int): Challenge = challenges(level).copy(link = Some(nextLink))
 
 }

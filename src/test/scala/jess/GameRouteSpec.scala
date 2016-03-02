@@ -49,12 +49,11 @@ class GameRouteSpec
       Get("/game/foo/start") ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("meta")
-        responseAs[String] should include("link_change_me")
-        //        responseAs[String] should not include "challenge"
+        responseAs[String] should include regex """"/game/foo/challenge/.+""""
       }
     }
     "get first challenge" in {
-      Get("/game/foo/challenge/link_change_me") ~> gameRoute ~> check {
+      Get("/game/foo/challenge/barbaz") ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("title")
         responseAs[String] should include("Multiples of 3 and 5")

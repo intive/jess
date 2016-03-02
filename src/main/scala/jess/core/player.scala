@@ -12,17 +12,16 @@ final case class PlayerState(
   nick: Option[String],
   points: Int = 0,
   attempts: Int = 0,
-  chans: ChallengeWithAnswer
+  challenge: Challenge
 )
 
-final case class ChallengeWithAnswer(level: Int, challenge: Challenge, answer: String)
-final case class Challenge(title: String, description: String, assignment: String)
+final case class Challenge(title: String, description: String, assignment: String, level: Int, answer: String, link: Option[String])
 
 object PlayerLogic {
 
   sealed trait PlayerAction
   case class StartGame(nick: String) extends PlayerAction
-  case class Next(link: JessLink) extends PlayerAction
+  case class GetChallenge(link: JessLink) extends PlayerAction
   case class Answer(link: JessLink, answer: String) extends PlayerAction
   case object Current extends PlayerAction
   case object Stats extends PlayerAction
@@ -68,8 +67,8 @@ trait PlayerLogic {
       } yield {
         State(
           ps => {
-            val chans = nextChallenge(ps.chans.level)
-            (ps.copy(nick = Some(nick), chans = chans), chans.challenge)
+            val ch = nextChallenge(ps.challenge.level)
+            (ps.copy(nick = Some(nick), challenge = ch), ch)
           }
         )
       }
@@ -90,7 +89,7 @@ trait PlayerLogic {
   val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] = answer => for {
     foo <- State.get[PlayerState]
   } yield {
-    if (foo.chans.answer == answer.answer) {
+    if (foo.challenge.answer == answer.answer) {
       ().right
     } else {
       IncorrectAnswer.left
@@ -106,9 +105,9 @@ trait PlayerLogic {
 
   val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] = State { ps =>
     {
-      val chans = nextChallenge(ps.chans.level + 1)
-      val _ps = setNewChallenge(ps)(chans.challenge)
-      (_ps, _ps.chans.challenge.right)
+      val challenge = nextChallenge(ps.challenge.level + 1)
+      val _ps = setNewChallenge(ps)(challenge)
+      (_ps, _ps.challenge.right)
     }
   }
 
@@ -121,11 +120,10 @@ trait PlayerLogic {
 
   private val _attempts = GenLens[PlayerState](_.attempts)
   private val _points = GenLens[PlayerState](_.points)
-  private val _chans = GenLens[PlayerState](_.chans)
-  private val _challenge = GenLens[ChallengeWithAnswer](_.challenge)
+  private val _challenge = GenLens[PlayerState](_.challenge)
 
-  private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(x => x + 1)(ps)
-  private val incPoints: PlayerState => PlayerState = ps => _points.modify(x => x + 10)(ps)
-  private val setNewChallenge: PlayerState => Challenge => PlayerState = ps => ch => (_chans ^|-> _challenge).set(ch)(ps)
+  private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(_ + 1)(ps)
+  private val incPoints: PlayerState => PlayerState = ps => _points.modify(_ + 10)(ps)
+  private val setNewChallenge: PlayerState => Challenge => PlayerState = ps => ch => _challenge.modify(_ => ch)(ps)
 }
 

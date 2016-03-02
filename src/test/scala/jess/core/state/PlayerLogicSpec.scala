@@ -1,7 +1,7 @@
 package com.blstream.jess
 package core.state
 
-import core.ChallengeService
+import com.blstream.jess.core.{ LinkGenerator, ChallengeService }
 import org.scalatest.FunSuite
 import cats.data.State
 import cats.scalatest.XorMatchers
@@ -12,13 +12,14 @@ class PlayerLogicSpec
     with XorMatchers
     with PlayerLogic
     with ChallengeService
+    with LinkGenerator
     with NickValidator {
 
   val ps = PlayerState(
     None,
     points = 0,
     attempts = 0,
-    chans = ChallengeWithAnswer(0, Challenge("title", "desc", "question"), "Answer")
+    challenge = Challenge("title", "desc", "question", 0, "Answer", Some("abc123"))
   )
 
   test("update points") {
