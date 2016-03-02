@@ -55,12 +55,13 @@ class GameRouteSpec
       Get("/game/foo/challenge/link_change_me") ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("title")
+        responseAs[String] should include("Multiples of 3 and 5")
         responseAs[String] should include("description")
         responseAs[String] should include("assignment")
       }
     }
     "resolve first challenge" in {
-      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "42"}""")
+      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "233168"}""")
       Post("/game/foo/challenge/link_change_me", entity) ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("Correct Answer")
@@ -70,11 +71,11 @@ class GameRouteSpec
       Get("/game/foo/challenge/current") ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("title")
+        responseAs[String] should include("Multiply level number")
         responseAs[String] should include("description")
         responseAs[String] should include("assignment")
       }
     }
-    //TODO post current challenge
   }
 
 }

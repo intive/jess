@@ -18,7 +18,7 @@ class PlayerActor
     with PlayerLogic
     with NickValidator {
 
-  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(1))).value
+  var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
 
   override def persistenceId: String = "player-actor"
 
