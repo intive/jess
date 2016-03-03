@@ -1,18 +1,24 @@
 package com.blstream.jess
 package api
 
+import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.http.scaladsl.model.ws.{ Message, TextMessage }
 import akka.http.scaladsl.server.Directives
+
 import akka.stream.scaladsl.Flow
-import core.score.ScoreService
+import core.score.{ ScoreService, ScorePublisher }
 
 trait Websocket {
   self: ScoreService =>
   import Directives._
+
+  def system: ActorSystem
+
   def wsRoute = path("stream") {
     get {
       handleWebsocketMessages(scoreFlow)
     }
+
   }
 
   /*  private val echoService: Flow[Message, Message, _] = Flow[Message].map {

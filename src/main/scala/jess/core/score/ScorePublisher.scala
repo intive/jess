@@ -1,13 +1,14 @@
 package com.blstream.jess
 package core.score
 
-import akka.actor.ActorLogging
+import akka.actor.{ ActorLogging, ActorRef }
 import akka.stream.actor.ActorPublisher
 import akka.stream.actor.ActorPublisherMessage.{ Cancel, Request }
+import akka.routing.{RemoveRoutee, ActorRefRoutee, AddRoutee}
 
 case class Score(name: String, score: Int)
 
-class ScorePublisher
+class ScorePublisher(router: ActorRef)
     extends ActorPublisher[Score]
     with ActorLogging {
 
@@ -16,10 +17,26 @@ class ScorePublisher
 
   var queue: mutable.Queue[Score] = mutable.Queue()
 
+  // on startup, register with routee
+  override def preStart(): Unit = {
+    log.info("Prestart")
+    router ! AddRoutee(ActorRefRoutee(self))
+
+  }
+
+  // cleanly remove this actor from the router. To
+  // make sure our custom router only keeps track of
+  // alive actors.
+  override def postStop(): Unit = {
+    log.info("Poststop")
+    router ! RemoveRoutee(ActorRefRoutee(self))
+
+  }
+
   def receive = {
-    case Publish(score) =>
+    case score @ ScoreRouter.Score(_) =>
       log.info(s"got message $score")
-      queue.enqueue(score)
+      queue.enqueue(Score("Marcin", score.score))
       sendScore()
     case Request(_) =>
       sendScore()

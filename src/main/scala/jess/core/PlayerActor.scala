@@ -1,7 +1,9 @@
 package com.blstream.jess
 package core
 
+import akka.actor.ActorRef
 import akka.persistence.PersistentActor
+import score.ScoreRouter
 import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
 import cats.syntax.xor._
 
@@ -11,14 +13,12 @@ sealed trait PlayerEvents
 
 case class StateModified(ps: PlayerState) extends PlayerEvents
 
-class PlayerActor
+class PlayerActor(scoreRouter: ActorRef)
     extends PersistentActor
     with ChallengeService
     with LinkService
     with PlayerLogic
     with NickValidator {
-
-  val scorePublisher = context.actorSelection("akka://jess/user/ScorePublisher")
 
   var state: PlayerState = initGame.runS(PlayerState(nick = None, chans = nextChallenge(0))).value
 
@@ -52,7 +52,7 @@ class PlayerActor
       )(ev => {
           state = nps
           sender ! challenge
-          scorePublisher ! core.score.ScorePublisher.Publish(core.score.Score("Marcin", 1))
+          scoreRouter ! ScoreRouter.Score(1)
         })
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge

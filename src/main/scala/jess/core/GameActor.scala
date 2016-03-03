@@ -27,7 +27,7 @@ object GameActor {
 
 }
 
-class GameActor
+class GameActor(scoreRouter: ActorRef)
     extends Actor
     with ChallengeService
     with Cache
@@ -39,18 +39,18 @@ class GameActor
 
   override def receive = {
     case GameActor.Join(nick) =>
-      (getRef(nick) ? PlayerLogic.StartGame(nick)) pipeTo sender
+      (getRef(nick, scoreRouter) ? PlayerLogic.StartGame(nick)) pipeTo sender
     case GameActor.GetChallenge(nick, link) =>
-      (getRef(nick) ? PlayerLogic.Next(link)) pipeTo sender
+      (getRef(nick, scoreRouter) ? PlayerLogic.Next(link)) pipeTo sender
     case GameActor.PostChallenge(nick, link, answer) =>
-      (getRef(nick) ? PlayerLogic.Answer(link, answer)) pipeTo sender
+      (getRef(nick, scoreRouter) ? PlayerLogic.Answer(link, answer)) pipeTo sender
     case GameActor.Stats(nick) =>
       //TODO when state transition error comes then class cast exception is thrown
-      val playerStats = (getRef(nick) ? PlayerLogic.Stats).mapTo[PlayerStats]
+      val playerStats = (getRef(nick, scoreRouter) ? PlayerLogic.Stats).mapTo[PlayerStats]
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time, ps.points))
       stats pipeTo sender
     case GameActor.Current(nick) =>
-      (getRef(nick) ? PlayerLogic.Current) pipeTo sender
+      (getRef(nick, scoreRouter) ? PlayerLogic.Current) pipeTo sender
   }
 }
 
@@ -58,11 +58,11 @@ trait Cache {
   self: Actor =>
   var cache: collection.mutable.Map[Nick, ActorRef] = collection.mutable.Map.empty
 
-  def getRef(nick: Nick) = {
+  def getRef(nick: Nick, scoreRouter: ActorRef) = {
     if (cache.contains(nick)) {
       cache(nick)
     } else {
-      val ref = context.actorOf(Props[PlayerActor], nick)
+      val ref = context.actorOf(Props(classOf[PlayerActor], scoreRouter), nick)
       cache += (nick -> ref)
       ref
     }
