@@ -34,6 +34,8 @@ class PlayerActor(scoreRouter: ActorRef)
           StateModified(newState)
         )(ev => {
             state = newState
+            val nick = state.nick.getOrElse("Unknown")
+            scoreRouter ! ScoreRouter.Join(nick)
             context become playing
           })
         ch
@@ -45,6 +47,7 @@ class PlayerActor(scoreRouter: ActorRef)
 
   def playing: Receive = {
     case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
+
     case ans @ PlayerLogic.Answer(_, _) =>
       val (nps, challenge) = answerChallenge(ans).run(state).value
       persist(
@@ -52,8 +55,10 @@ class PlayerActor(scoreRouter: ActorRef)
       )(ev => {
           state = nps
           sender ! challenge
-          scoreRouter ! ScoreRouter.Score(1)
+          val (nick, points) = (state.nick.getOrElse("Unknown"), state.points)
+          scoreRouter ! ScoreRouter.Score(nick, points)
         })
+
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge
     case PlayerLogic.Stats =>

@@ -2,7 +2,7 @@ package com.blstream.jess
 package core.score
 
 import akka.actor.{ Actor, ActorLogging, ActorRef }
-import akka.routing.{ ActorRefRoutee, AddRoutee, RemoveRoutee, Routee }
+import akka.routing.{ AddRoutee, RemoveRoutee, Routee }
 
 class ScoreRouter
     extends Actor
@@ -21,17 +21,20 @@ class ScoreRouter
     case msg: IncommingMessage =>
       log.info(s"Got messasge $msg")
       broadcast(msg)
-    case msg: Any => log.info(s"Got unknown message $msg")
+
   }
 
   private def broadcast[A](message: A) = {
-    log.info(s"Participiants $participiants with get the message")
-    participiants.foreach(_.send(message, sender))
+    participiants.foreach { p =>
+      log.info(s"Participiant $p will get the message $message")
+      p.send(message, sender)
+    }
   }
 
 }
 
 object ScoreRouter {
   trait IncommingMessage
-  case class Score(score: Int) extends IncommingMessage
+  case class Score(name: String, score: Int) extends IncommingMessage
+  case class Join(nick: String) extends IncommingMessage
 }
