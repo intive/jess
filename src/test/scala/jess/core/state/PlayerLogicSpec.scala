@@ -3,7 +3,6 @@ package core.state
 
 import com.blstream.jess.core.{ LinkGenerator, ChallengeService }
 import org.scalatest.FunSuite
-import cats.data.State
 import cats.scalatest.XorMatchers
 import org.scalatest.Matchers._
 
@@ -15,11 +14,14 @@ class PlayerLogicSpec
     with LinkGenerator
     with NickValidator {
 
+  val link = "abc123"
+
   val ps = PlayerState(
     None,
     points = 0,
     attempts = 0,
-    challenge = Challenge("title", "desc", "question", 0, "Answer", Some("abc123"))
+    current = link,
+    challenges = Map(link -> Challenge("title", "desc", "question", level = 0, "Answer", Some(link)))
   )
 
   test("update points") {
@@ -35,7 +37,6 @@ class PlayerLogicSpec
 
     newState should ===(ps)
     resp should be(right)
-
   }
 
   test("check answer which is incorrect") {
@@ -43,7 +44,6 @@ class PlayerLogicSpec
 
     newState should ===(ps)
     resp should be(left)
-
   }
 
   test("increment attempt") {
@@ -51,12 +51,24 @@ class PlayerLogicSpec
 
     newState should have('attempts(1))
     resp should ===(1)
-
   }
 
-  test("update challenge") {
+  test("new challenge") {
     val (newState, challenge) = newChallenge.run(ps).value
 
     challenge should be(right)
+    newState.current !== ps.current
+    newState.challenges.size === 2
+  }
+
+  test("answer challenge") {
+    val ans = PlayerLogic.Answer("some_link", "Answer")
+    val (newState, challenge) = answerChallenge(ans).run(ps).value
+
+    challenge should be(right)
+    newState should have('attempts(1))
+    newState should have('points(10))
+    newState.current !== ps.current
+    newState.challenges.size === 2
   }
 }

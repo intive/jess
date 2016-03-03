@@ -9,12 +9,10 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import cats.data.Xor.Left
 import core.state.{ Challenge, SomeError }
-import core.{ CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats }
+import core.{ GameActor, JessLink, Stats }
 import spray.json._
 
-import concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 

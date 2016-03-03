@@ -1,19 +1,21 @@
 package com.blstream.jess
 package core.state
 
-import cats.SemigroupK
-import cats.data.{ NonEmptyList, State, StateT, Xor }
+import cats.data.{ State, Xor }
 import cats.syntax.xor._
 
 import core._
 import monocle.macros.GenLens
 
 final case class PlayerState(
-  nick: Option[String],
-  points: Int = 0,
-  attempts: Int = 0,
-  challenge: Challenge
-)
+    nick: Option[String],
+    points: Int = 0,
+    attempts: Int = 0,
+    current: String,
+    challenges: Map[String, Challenge]
+) {
+  val challenge = challenges(current)
+}
 
 final case class Challenge(title: String, description: String, assignment: String, level: Int, answer: String, link: Option[String])
 
@@ -68,7 +70,7 @@ trait PlayerLogic {
         State(
           ps => {
             val ch = nextChallenge(ps.challenge.level)
-            (ps.copy(nick = Some(nick), challenge = ch), ch)
+            (ps.copy(nick = Some(nick), current = ch.link.get, challenges = ps.challenges ++ Map(ch.link.get -> ch)), ch)
           }
         )
       }
@@ -81,20 +83,19 @@ trait PlayerLogic {
         err => State((s: PlayerState) => (s, err.left)),
         _ => for {
           _ <- updatePoints
-          challenge <- newChallenge
-        } yield challenge
+          ch <- newChallenge
+        } yield ch
       )
     } yield challenge
 
-  val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] = answer => for {
-    foo <- State.get[PlayerState]
-  } yield {
-    if (foo.challenge.answer == answer.answer) {
-      ().right
-    } else {
-      IncorrectAnswer.left
-    }
-  }
+  val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] =
+    answer =>
+      for {
+        ps <- State.get[PlayerState]
+      } yield {
+        if (ps.challenge.answer == answer.answer) ().right
+        else IncorrectAnswer.left
+      }
 
   val updatePoints: State[PlayerState, Xor[SomeError, Int]] = State { ps =>
     {
@@ -106,7 +107,9 @@ trait PlayerLogic {
   val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] = State { ps =>
     {
       val challenge = nextChallenge(ps.challenge.level + 1)
-      val _ps = setNewChallenge(ps)(challenge)
+      val add: PlayerState => PlayerState = addChallenge(_)(challenge)
+      val set: PlayerState => PlayerState = setCurrent(_)(challenge)
+      val _ps = (add andThen set)(ps)
       (_ps, _ps.challenge.right)
     }
   }
@@ -118,12 +121,18 @@ trait PlayerLogic {
     }
   }
 
+  val initialState: Challenge => PlayerState =
+    ch => PlayerState(nick = None, current = ch.link.get, challenges = Map(ch.link.get -> ch))
+
   private val _attempts = GenLens[PlayerState](_.attempts)
   private val _points = GenLens[PlayerState](_.points)
-  private val _challenge = GenLens[PlayerState](_.challenge)
+  private val _challenges = GenLens[PlayerState](_.challenges)
+  private val _current = GenLens[PlayerState](_.current)
 
   private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(_ + 1)(ps)
   private val incPoints: PlayerState => PlayerState = ps => _points.modify(_ + 10)(ps)
-  private val setNewChallenge: PlayerState => Challenge => PlayerState = ps => ch => _challenge.modify(_ => ch)(ps)
+  private val setCurrent: PlayerState => Challenge => PlayerState = ps => ch => _current.set(ch.link.get)(ps)
+  private val addChallenge: PlayerState => Challenge => PlayerState = ps => ch => _challenges.modify(x => x ++ Map(ch.link.get -> ch))(ps)
+
 }
 

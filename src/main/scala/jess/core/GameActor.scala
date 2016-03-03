@@ -41,15 +41,19 @@ class GameActor(scoreRouter: ActorRef)
   override def receive = {
     case GameActor.Join(nick) =>
       (getRef(nick, scoreRouter) ? PlayerLogic.StartGame(nick)) pipeTo sender
+
     case GameActor.GetChallenge(nick, link) =>
       (getRef(nick, scoreRouter) ? PlayerLogic.GetChallenge(link)) pipeTo sender
+
     case GameActor.PostChallenge(nick, link, answer) =>
       (getRef(nick, scoreRouter) ? PlayerLogic.Answer(link, answer)) pipeTo sender
+
     case GameActor.Stats(nick) =>
       //TODO when state transition error comes then class cast exception is thrown
       val playerStats = (getRef(nick, scoreRouter) ? PlayerLogic.Stats).mapTo[PlayerStatus]
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time, ps.points))
       stats pipeTo sender
+
     case GameActor.Current(nick) =>
       (getRef(nick, scoreRouter) ? PlayerLogic.Current) pipeTo sender
   }
