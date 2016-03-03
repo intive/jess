@@ -5,6 +5,7 @@ import akka.actor.ActorRef
 import akka.persistence.PersistentActor
 import score.ScoreRouter
 import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
+import cats.data.Xor
 import com.blstream.jess.core.state._
 import cats.syntax.xor._
 
@@ -21,27 +22,27 @@ class PlayerActor(scoreRouter: ActorRef)
     with PlayerLogic
     with NickValidator {
 
-  var state: PlayerState = initGame.runS(initialState(nextChallenge(0))).value
+  var state: PlayerState = null
 
   override def persistenceId: String = "player-actor"
 
   def readyToPlay: Receive = {
     case sg @ PlayerLogic.StartGame(_) =>
-      val maybeChallenge = for {
-        start <- startGame(sg)
-      } yield {
-        val (newState, ch) = start.run(state).value
-        persist(
-          StateModified(newState)
-        )(ev => {
-            state = newState
-            val nick = state.nick.getOrElse("Unknown")
-            scoreRouter ! ScoreRouter.Join(nick)
-            context become playing
-          })
-        ch
+      nextChallenge(0) match {
+        case None => sender ! NoChallengesError.left
+        case Some(challenge) => {
+          val (newState, ch) = startGame(sg).run(initialState(challenge)).value
+          persist(
+            StateModified(newState)
+          )(ev => {
+              state = newState
+              val nick = state.nick.getOrElse("Unknown")
+              scoreRouter ! ScoreRouter.Join(nick)
+              context become playing
+              sender ! ch
+            })
+        }
       }
-      sender ! maybeChallenge
 
     case _ => sender ! StateTransitionError("Start game first").left
   }

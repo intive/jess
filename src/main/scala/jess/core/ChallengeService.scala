@@ -40,6 +40,6 @@ trait ChallengeService {
       )
     )
 
-  def nextChallenge(level: Int): Challenge = challenges(level).copy(link = Some(nextLink))
+  def nextChallenge(level: Int): Option[Challenge] = challenges.lift(level).map(_.copy(link = Some(nextLink)))
 
 }
