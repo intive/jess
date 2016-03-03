@@ -3,7 +3,7 @@ package core
 
 import java.util.UUID
 
-import com.blstream.jess.core.state.Challenge
+import state.Challenge
 
 trait LinkGenerator {
   def nextLink = UUID.randomUUID().toString.replaceAll("-", "")

@@ -4,9 +4,7 @@ package core
 import akka.actor.ActorRef
 import akka.persistence.PersistentActor
 import score.ScoreRouter
-import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
-import cats.data.Xor
-import com.blstream.jess.core.state._
+import core.state._
 import cats.syntax.xor._
 
 case class PlayerStatus(attempts: Int, time: Long, points: Long)

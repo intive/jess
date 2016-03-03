@@ -1,7 +1,7 @@
 package com.blstream.jess
 package core.state
 
-import com.blstream.jess.core.{ LinkGenerator, ChallengeService }
+import core.{ LinkGenerator, ChallengeService }
 import org.scalatest.FunSuite
 import cats.scalatest.XorMatchers
 import org.scalatest.Matchers._

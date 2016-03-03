@@ -2,11 +2,11 @@ package com.blstream.jess
 package api
 
 import akka.actor.{ ActorSystem, Props }
-import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, StatusCodes }
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
-import com.blstream.jess.core.GameActor
-import com.blstream.jess.core.score.ScoreRouter
+import core.GameActor
+import core.score.ScoreRouter
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
 
