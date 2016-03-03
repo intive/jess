@@ -33,14 +33,14 @@ class PlayerLogicSpec
   }
 
   test("check answer which is correct") {
-    val (newState, resp) = checkAnswer(PlayerLogic.Answer("link", "Answer")).run(ps).value
+    val (newState, resp) = checkAnswer(PlayerLogic.Answer(link, "Answer")).run(ps).value
 
     newState should ===(ps)
     resp should be(right)
   }
 
   test("check answer which is incorrect") {
-    val (newState, resp) = checkAnswer(PlayerLogic.Answer("link", "IncorrectAnswer")).run(ps).value
+    val (newState, resp) = checkAnswer(PlayerLogic.Answer(link, "IncorrectAnswer")).run(ps).value
 
     newState should ===(ps)
     resp should be(left)
@@ -62,7 +62,7 @@ class PlayerLogicSpec
   }
 
   test("answer challenge") {
-    val ans = PlayerLogic.Answer("some_link", "Answer")
+    val ans = PlayerLogic.Answer(link, "Answer")
     val (newState, challenge) = answerChallenge(ans).run(ps).value
 
     challenge should be(right)

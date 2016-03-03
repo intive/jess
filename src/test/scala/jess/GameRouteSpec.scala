@@ -25,56 +25,13 @@ class GameRouteSpec
     "start game" in {
       Get("/game/marcin/start") ~> gameRoute ~> check {
         status === StatusCodes.OK
-      }
-    }
-    "get current challenge" in {
-      Get("/game/marcin/challenge/current") ~> gameRoute ~> check {
-        status === StatusCodes.OK
-      }
-    }
-    "get current challenge by uuid, current or passed" in {
-      Get("/game/marcin/challenge/A0EBD3B3-F2C7-443A-8192-AB23EF846A3D") ~> gameRoute ~> check {
-        status === StatusCodes.OK
+        responseAs[String] should include("meta")
+        responseAs[String] should include regex """"/game/marcin/challenge/.+""""
       }
     }
     "get stats about game progress" in {
       Get("/game/marcin/challenge") ~> gameRoute ~> check {
         status === StatusCodes.OK
-      }
-    }
-  }
-
-  "Play game happy path" should {
-    "start game" in {
-      Get("/game/foo/start") ~> gameRoute ~> check {
-        status === StatusCodes.OK
-        responseAs[String] should include("meta")
-        responseAs[String] should include regex """"/game/foo/challenge/.+""""
-      }
-    }
-    "get first challenge" in {
-      Get("/game/foo/challenge/barbaz") ~> gameRoute ~> check {
-        status === StatusCodes.OK
-        responseAs[String] should include("title")
-        responseAs[String] should include("Multiples of 3 and 5")
-        responseAs[String] should include("description")
-        responseAs[String] should include("assignment")
-      }
-    }
-    "resolve first challenge" in {
-      val entity = HttpEntity(ContentTypes.`application/json`, """{"answer" : "233168"}""")
-      Post("/game/foo/challenge/link_change_me", entity) ~> gameRoute ~> check {
-        status === StatusCodes.OK
-        responseAs[String] should include("Correct Answer")
-      }
-    }
-    "get current challenge" in {
-      Get("/game/foo/challenge/current") ~> gameRoute ~> check {
-        status === StatusCodes.OK
-        responseAs[String] should include("title")
-        responseAs[String] should include("Multiply level number")
-        responseAs[String] should include("description")
-        responseAs[String] should include("assignment")
       }
     }
   }

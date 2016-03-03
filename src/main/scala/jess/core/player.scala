@@ -93,7 +93,7 @@ trait PlayerLogic {
       for {
         ps <- State.get[PlayerState]
       } yield {
-        if (ps.challenge.answer == answer.answer) ().right
+        if (ps.challenges(answer.link).answer == answer.answer) ().right
         else IncorrectAnswer.left
       }
 

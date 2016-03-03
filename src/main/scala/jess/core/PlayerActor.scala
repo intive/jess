@@ -59,8 +59,8 @@ class PlayerActor(scoreRouter: ActorRef)
           val (nick, points) = (state.nick.getOrElse("Unknown"), state.points)
           scoreRouter ! ScoreRouter.Score(nick, points)
         })
-    case PlayerLogic.GetChallenge(lnk) =>
-      sender ! state.challenge
+    case PlayerLogic.GetChallenge(link) =>
+      sender ! state.challenges(link)
     case PlayerLogic.Stats =>
       sender ! PlayerStatus(state.attempts, 10, state.points)
     case PlayerLogic.Current =>
