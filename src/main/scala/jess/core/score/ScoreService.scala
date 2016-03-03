@@ -36,7 +36,9 @@ trait ScoreService extends LazyLogging {
 
 object ScoreService {
 
-  trait Api { def message: String }
+  trait Api {
+    def message: String
+  }
 
   case class PlayerHasJoined(nick: String) extends Api {
     val message: String = s"Player $nick has joined game"
@@ -44,7 +46,6 @@ object ScoreService {
 
   case class PlayerScores(nick: String, score: Int) extends Api {
     def message: String = s"Player $nick has earned point. Total score $score"
-
   }
 
   case object Ping extends Api { val message: String = "" }

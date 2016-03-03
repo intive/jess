@@ -24,7 +24,6 @@ class ScorePublisher(router: ActorRef)
   override def postStop(): Unit = {
     log.info("Removing Score Publisher")
     router ! RemoveRoutee(ActorRefRoutee(self))
-
   }
 
   def receive = {
