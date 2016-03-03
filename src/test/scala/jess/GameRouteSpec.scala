@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, RequestEntity, Statu
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
 import com.blstream.jess.core.GameActor
+import com.blstream.jess.core.score.ScoreRouter
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
 
@@ -17,7 +18,8 @@ class GameRouteSpec
 
   implicit val as = ActorSystem("test")
   implicit val timeout = Timeout(5 seconds)
-  val gameActorRef = as.actorOf(Props[GameActor], "game")
+  val scoreRouterRef = as.actorOf(Props[ScoreRouter], "router")
+  val gameActorRef = as.actorOf(Props(classOf[GameActor], scoreRouterRef), "game")
 
   "Game route" should {
     "start game" in {

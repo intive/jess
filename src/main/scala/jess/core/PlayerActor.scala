@@ -1,7 +1,9 @@
 package com.blstream.jess
 package core
 
+import akka.actor.ActorRef
 import akka.persistence.PersistentActor
+import score.ScoreRouter
 import core.state.{ NickValidator, PlayerLogic, PlayerState, StateTransitionError }
 import cats.syntax.xor._
 
@@ -11,7 +13,7 @@ sealed trait PlayerEvents
 
 case class StateModified(ps: PlayerState) extends PlayerEvents
 
-class PlayerActor
+class PlayerActor(scoreRouter: ActorRef)
     extends PersistentActor
     with ChallengeService
     with LinkService
@@ -32,6 +34,8 @@ class PlayerActor
           StateModified(newState)
         )(ev => {
             state = newState
+            val nick = state.nick.getOrElse("Unknown")
+            scoreRouter ! ScoreRouter.Join(nick)
             context become playing
           })
         ch
@@ -43,6 +47,7 @@ class PlayerActor
 
   def playing: Receive = {
     case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
+
     case ans @ PlayerLogic.Answer(_, _) =>
       val (nps, challenge) = answerChallenge(ans).run(state).value
       persist(
@@ -50,7 +55,10 @@ class PlayerActor
       )(ev => {
           state = nps
           sender ! challenge
+          val (nick, points) = (state.nick.getOrElse("Unknown"), state.points)
+          scoreRouter ! ScoreRouter.Score(nick, points)
         })
+
     case PlayerLogic.Next(lnk) =>
       sender ! state.chans.challenge
     case PlayerLogic.Stats =>
