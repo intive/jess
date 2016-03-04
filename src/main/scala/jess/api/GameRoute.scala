@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import core.state.{ Challenge, SomeError }
+import com.blstream.jess.core.state.{ ChallengeWithoutAnswer, Challenge, SomeError }
 import core.{ GameActor, JessLink, Stats }
 import spray.json._
 
@@ -39,10 +39,10 @@ object Meta extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat6(Challenge)
+  implicit val formatChallenge: RootJsonFormat[ChallengeWithoutAnswer] = jsonFormat5(ChallengeWithoutAnswer)
 }
 
-case class ChallengeResponse(meta: Meta, challenge: Challenge)
+case class ChallengeResponse(meta: Meta, challenge: ChallengeWithoutAnswer)
 
 object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
 
@@ -82,7 +82,7 @@ trait GameRoute {
     nick =>
       (path("start") & get) {
         complete {
-          val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
+          val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, ChallengeWithoutAnswer]]
           respF.map {
             case resp => resp.fold(
               err => HttpResponse(StatusCodes.BadRequest, entity = err.toString),
@@ -114,7 +114,7 @@ trait GameRoute {
       get {
         complete {
           import ChallengeFormat._
-          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
+          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[ChallengeWithoutAnswer]
         }
       }
 

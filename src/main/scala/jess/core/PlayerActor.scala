@@ -37,7 +37,7 @@ class PlayerActor(scoreRouter: ActorRef)
               val nick = state.nick.getOrElse("Unknown")
               scoreRouter ! ScoreRouter.Join(nick)
               context become playing
-              sender ! ch
+              sender ! ch.map(_.withoutAnswer)
             })
         }
       }
@@ -59,7 +59,7 @@ class PlayerActor(scoreRouter: ActorRef)
           scoreRouter ! ScoreRouter.Score(nick, points)
         })
     case PlayerLogic.GetChallenge(link) =>
-      sender ! state.challenges(link)
+      sender ! state.challenges(link).withoutAnswer
     case PlayerLogic.Stats =>
       sender ! PlayerStatus(state.attempts, 10, state.points)
     case PlayerLogic.Current =>

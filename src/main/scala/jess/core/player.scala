@@ -17,7 +17,10 @@ final case class PlayerState(
   val challenge = challenges(current)
 }
 
-final case class Challenge(title: String, description: String, assignment: String, level: Int, answer: String, link: Option[String])
+final case class Challenge(title: String, description: String, assignment: String, level: Int, answer: String, link: Option[String]) {
+  def withoutAnswer = ChallengeWithoutAnswer(title, description, assignment, level, link)
+}
+final case class ChallengeWithoutAnswer(title: String, description: String, assignment: String, level: Int, link: Option[String])
 
 object PlayerLogic {
 
