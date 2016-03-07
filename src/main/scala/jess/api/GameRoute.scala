@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import com.blstream.jess.core.state.{ ChallengeWithoutAnswer, Challenge, SomeError }
+import com.blstream.jess.core.state.{ Challenge, ChallengeWithAnswer, SomeError }
 import core.{ GameActor, JessLink, Stats }
 import spray.json._
 
@@ -39,10 +39,10 @@ object Meta extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val formatChallenge: RootJsonFormat[ChallengeWithoutAnswer] = jsonFormat5(ChallengeWithoutAnswer)
+  implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat5(Challenge)
 }
 
-case class ChallengeResponse(meta: Meta, challenge: ChallengeWithoutAnswer)
+case class ChallengeResponse(meta: Meta, challenge: Challenge)
 
 object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
 
@@ -82,7 +82,7 @@ trait GameRoute {
     nick =>
       (path("start") & get) {
         complete {
-          val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, ChallengeWithoutAnswer]]
+          val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
           respF.map {
             case resp => resp.fold(
               err => HttpResponse(StatusCodes.BadRequest, entity = err.toString),
@@ -114,7 +114,7 @@ trait GameRoute {
       get {
         complete {
           import ChallengeFormat._
-          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[ChallengeWithoutAnswer]
+          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
         }
       }
 
@@ -123,7 +123,7 @@ trait GameRoute {
       post {
         entity(as[PostAnswerRequest]) { par =>
           complete {
-            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
+            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeWithAnswer]]
             resp.map {
               case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
               case Xor.Left(err) => StatusCodes.BadRequest -> err.toString

@@ -11,7 +11,7 @@ case class PlayerStatus(attempts: Int, time: Long, points: Long)
 
 sealed trait PlayerEvents
 
-case class StateModified(ps: PlayerState) extends PlayerEvents
+case class StateModified(ps: Option[PlayerState]) extends PlayerEvents
 
 class PlayerActor(scoreRouter: ActorRef)
     extends PersistentActor
@@ -20,27 +20,28 @@ class PlayerActor(scoreRouter: ActorRef)
     with PlayerLogic
     with NickValidator {
 
-  var state: PlayerState = null
+  var state: Option[PlayerState] = None
 
   override def persistenceId: String = "player-actor"
 
   def readyToPlay: Receive = {
-    case sg @ PlayerLogic.StartGame(_) =>
-      nextChallenge(0) match {
-        case None => sender ! NoChallengesError.left
-        case Some(challenge) => {
-          val (newState, ch) = startGame(sg).run(initialState(challenge)).value
+    case sg @ PlayerLogic.StartGame(_) => {
+      val (newStateMaybe, chOrErr) = startGame(sg).run(state).value
+      newStateMaybe match {
+        case someNewState @ Some(_) => {
           persist(
-            StateModified(newState)
+            StateModified(someNewState)
           )(ev => {
-              state = newState
-              val nick = state.nick.getOrElse("Unknown")
+              state = someNewState
+              val nick = state.get.nick
               scoreRouter ! ScoreRouter.Join(nick)
               context become playing
-              sender ! ch.map(_.withoutAnswer)
+              sender ! chOrErr.map(_.withoutAnswer)
             })
         }
+        case None => sender ! chOrErr
       }
+    }
 
     case _ => sender ! StateTransitionError("Start game first").left
   }
@@ -49,21 +50,35 @@ class PlayerActor(scoreRouter: ActorRef)
     case PlayerLogic.StartGame(_) => sender ! StateTransitionError("Game already started").left
 
     case ans @ PlayerLogic.Answer(_, _) =>
-      val (nps, challenge) = answerChallenge(ans).run(state).value
-      persist(
-        StateModified(state)
-      )(ev => {
-          state = nps
-          sender ! challenge
-          val (nick, points) = (state.nick.getOrElse("Unknown"), state.points)
-          scoreRouter ! ScoreRouter.Score(nick, points)
-        })
+      val (nps, chOrErr) = answerChallenge(ans).run(state).value
+      nps match {
+        case someNewState @ Some(_) => {
+          persist(
+            StateModified(someNewState)
+          )(ev => {
+              state = someNewState
+              sender ! chOrErr
+              val (nick, points) = (state.get.nick, state.get.points)
+              scoreRouter ! ScoreRouter.Score(nick, points)
+            })
+        }
+        case None => sender ! chOrErr
+      }
     case PlayerLogic.GetChallenge(link) =>
-      sender ! state.challenges(link).withoutAnswer
+      state match {
+        case Some(st) => sender ! st.challenges(link).withoutAnswer
+        case None => sender ! StateNotInitialized
+      }
     case PlayerLogic.Stats =>
-      sender ! PlayerStatus(state.attempts, 10, state.points)
+      state match {
+        case Some(st) => sender ! PlayerStatus(st.attempts, 10, st.points)
+        case None => sender ! StateNotInitialized
+      }
     case PlayerLogic.Current =>
-      sender ! state.challenge.link
+      state match {
+        case Some(st) => sender ! st.challenge.link
+        case None => sender ! StateNotInitialized
+      }
   }
 
   def gameFinished: Receive = {

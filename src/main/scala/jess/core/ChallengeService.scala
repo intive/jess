@@ -3,7 +3,7 @@ package core
 
 import java.util.UUID
 
-import state.Challenge
+import state.ChallengeWithAnswer
 
 trait LinkGenerator {
   def nextLink = UUID.randomUUID().toString.replaceAll("-", "")
@@ -14,7 +14,7 @@ trait ChallengeService {
 
   private val challenges =
     Vector(
-      Challenge(
+      ChallengeWithAnswer(
         level = 0,
         title = "The most important question",
         description = "This is a question about live",
@@ -22,7 +22,7 @@ trait ChallengeService {
         answer = "42",
         link = None
       ),
-      Challenge(
+      ChallengeWithAnswer(
         level = 1,
         title = "Multiply level number",
         description = "Level is complicated number, try multiplying it",
@@ -30,7 +30,7 @@ trait ChallengeService {
         answer = "4",
         link = None
       ),
-      Challenge(
+      ChallengeWithAnswer(
         level = 2,
         title = "Multiples of 3 and 5",
         description = """If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.""",
@@ -40,6 +40,8 @@ trait ChallengeService {
       )
     )
 
-  def nextChallenge(level: Int): Option[Challenge] = challenges.lift(level).map(_.copy(link = Some(nextLink)))
+  def nextChallenge(level: Int): Option[ChallengeWithAnswer] =
+    challenges.lift(level).map(x =>
+      ChallengeWithAnswer(x.title, x.description, x.assignment, x.level, link = Some(nextLink), x.answer))
 
 }
