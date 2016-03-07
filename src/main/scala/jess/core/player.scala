@@ -94,21 +94,15 @@ trait PlayerLogic {
 
   val startGame: StartGame => State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
     start =>
-      State(ps =>
-        validate(start.nick) match {
-          case Xor.Right(nick) => {
-            val maybeChallenge = nextChallenge(0)
-            maybeChallenge match {
-              case None => (ps, NoChallengesError.left)
-              case Some(challenge) =>
-                (
-                  Some(PlayerState(nick = nick, current = challenge.link.get, challenges = Map(challenge.link.get -> challenge))),
-                  challenge.right
-                )
-            }
-          }
-          case leftErr @ Xor.Left(_) => (ps, leftErr)
-        })
+      State(ps => {
+        for {
+          nick <- validate(start.nick)
+          challenge <- Xor.fromOption(nextChallenge(0), NoChallengesError)
+        } yield (Some(PlayerState(nick = nick, current = challenge.link.get, challenges = Map(challenge.link.get -> challenge))), challenge.right)
+      }.fold(
+        err => (ps, err.left),
+        y => y
+      ))
 
   val answerChallenge: Answer => State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
     answer => for {
@@ -146,17 +140,15 @@ trait PlayerLogic {
 
   val newChallenge: State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
     State { psMaybe =>
-      psMaybe.map { ps =>
-        {
-          nextChallenge(ps.challenge.level + 1) match {
-            case None => (psMaybe, GameFinished.left)
-            case Some(challenge) => {
-              val add: PlayerState => PlayerState = addChallenge(_)(challenge)
-              val set: PlayerState => PlayerState = setCurrent(_)(challenge)
-              val _ps = (add andThen set)(ps)
-              (Some(_ps), _ps.challenge.right)
-            }
-          }
+      {
+        for {
+          ps <- psMaybe
+          challenge <- nextChallenge(ps.challenge.level + 1)
+        } yield {
+          val add: PlayerState => PlayerState = addChallenge(_)(challenge)
+          val set: PlayerState => PlayerState = setCurrent(_)(challenge)
+          val _ps = (add andThen set)(ps)
+          (Some(_ps), _ps.challenge.right)
         }
       }.getOrElse((psMaybe, StateNotInitialized.left))
     }
