@@ -1,28 +1,56 @@
 package com.blstream.jess
 package core.state
 
-import cats.SemigroupK
-import cats.data.{ NonEmptyList, State, StateT, Xor }
+import cats.data.{ State, Xor }
 import cats.syntax.xor._
 
 import core._
 import monocle.macros.GenLens
 
 final case class PlayerState(
-  nick: Option[String],
+  nick: String,
   points: Int = 0,
   attempts: Int = 0,
-  chans: ChallengeWithAnswer
-)
+  current: String,
+  challenges: Map[String, ChallengeWithAnswer]
+) extends {
+  val challenge = challenges(current)
+}
 
-final case class ChallengeWithAnswer(level: Int, challenge: Challenge, answer: String)
-final case class Challenge(title: String, description: String, assignment: String)
+abstract class ChallengeBase {
+  val title: String
+  val description: String
+  val assignment: String
+  val level: Int
+  val link: Option[String]
+}
+
+case class Challenge(
+  override val title: String,
+  override val description: String,
+  override val assignment: String,
+  override val level: Int,
+  override val link: Option[String]
+) extends ChallengeBase
+
+final case class ChallengeWithAnswer(
+    override val title: String,
+    override val description: String,
+    override val assignment: String,
+    override val level: Int,
+    override val link: Option[String],
+    answer: String
+) extends ChallengeBase {
+
+  def withoutAnswer = Challenge(title, description, assignment, level, link)
+
+}
 
 object PlayerLogic {
 
   sealed trait PlayerAction
   case class StartGame(nick: String) extends PlayerAction
-  case class Next(link: JessLink) extends PlayerAction
+  case class GetChallenge(link: JessLink) extends PlayerAction
   case class Answer(link: JessLink, answer: String) extends PlayerAction
   case object Current extends PlayerAction
   case object Stats extends PlayerAction
@@ -31,6 +59,9 @@ object PlayerLogic {
 sealed trait SomeError
 case object EmptyNickError extends SomeError
 case object AlreadyTakenNickError extends SomeError
+case object GameFinished extends SomeError
+case object NoChallengesError extends SomeError
+case object StateNotInitialized extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 case object IncorrectAnswer extends SomeError
@@ -59,73 +90,88 @@ trait PlayerLogic {
 
   import PlayerLogic._
 
-  val initGame: State[PlayerState, Unit] = State(ps => (ps, ()))
+  val initGame: State[Option[PlayerState], Unit] = State(ps => (ps, ()))
 
-  val startGame: StartGame => Xor[SomeError, State[PlayerState, Challenge]] =
+  val startGame: StartGame => State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
     start =>
-      for {
-        nick <- validate(start.nick)
-      } yield {
-        State(
-          ps => {
-            val chans = nextChallenge(ps.chans.level)
-            (ps.copy(nick = Some(nick), chans = chans), chans.challenge)
-          }
-        )
-      }
+      State(ps => {
+        for {
+          nick <- validate(start.nick)
+          challenge <- Xor.fromOption(nextChallenge(0), NoChallengesError)
+        } yield (Some(PlayerState(nick = nick, current = challenge.link.get, challenges = Map(challenge.link.get -> challenge))), challenge.right)
+      }.fold(
+        err => (ps, err.left),
+        y => y
+      ))
 
-  val answerChallenge: Answer => State[PlayerState, Xor[SomeError, Challenge]] =
+  val answerChallenge: Answer => State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
     answer => for {
       _ <- incrementAttempts
       ans <- checkAnswer(answer)
       challenge <- ans.fold(
-        err => State((s: PlayerState) => (s, err.left)),
+        err => State((s: Option[PlayerState]) => (s, err.left)),
         _ => for {
           _ <- updatePoints
-          challenge <- newChallenge
-        } yield challenge
+          ch <- newChallenge
+        } yield ch
       )
     } yield challenge
 
-  val checkAnswer: Answer => State[PlayerState, Xor[SomeError, Unit]] = answer => for {
-    foo <- State.get[PlayerState]
-  } yield {
-    if (foo.chans.answer == answer.answer) {
-      ().right
-    } else {
-      IncorrectAnswer.left
-    }
-  }
+  val checkAnswer: Answer => State[Option[PlayerState], Xor[SomeError, Unit]] =
+    answer =>
+      for {
+        psMaybe <- State.get[Option[PlayerState]]
+      } yield {
+        psMaybe.map { ps =>
+          if (ps.challenges(answer.link).answer == answer.answer) ().right
+          else IncorrectAnswer.left
+        }.getOrElse(StateNotInitialized.left)
+      }
 
-  val updatePoints: State[PlayerState, Xor[SomeError, Int]] = State { ps =>
-    {
-      val _ps = incPoints(ps)
-      (_ps, _ps.points.right)
+  val updatePoints: State[Option[PlayerState], Xor[SomeError, Int]] =
+    State { psMaybe =>
+      psMaybe.map { ps =>
+        {
+          val _ps = incPoints(ps)
+          (Some(_ps), _ps.points.right)
+        }
+      }.getOrElse((psMaybe, StateNotInitialized.left))
     }
-  }
 
-  val newChallenge: State[PlayerState, Xor[SomeError, Challenge]] = State { ps =>
-    {
-      val chans = nextChallenge(ps.chans.level + 1)
-      val _ps = setNewChallenge(ps)(chans.challenge)
-      (_ps, _ps.chans.challenge.right)
+  val newChallenge: State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
+    State { psMaybe =>
+      {
+        for {
+          ps <- psMaybe
+          challenge <- nextChallenge(ps.challenge.level + 1)
+        } yield {
+          val add: PlayerState => PlayerState = addChallenge(_)(challenge)
+          val set: PlayerState => PlayerState = setCurrent(_)(challenge)
+          val _ps = (add andThen set)(ps)
+          (Some(_ps), _ps.challenge.right)
+        }
+      }.getOrElse((psMaybe, StateNotInitialized.left))
     }
-  }
 
-  val incrementAttempts: State[PlayerState, Int] = State { ps =>
-    {
-      val _ps = incAttempt(ps)
-      (_ps, _ps.attempts)
+  val incrementAttempts: State[Option[PlayerState], Xor[SomeError, Int]] =
+    State { psMaybe =>
+      psMaybe.map { ps =>
+        {
+          val _ps = incAttempt(ps)
+          (Some(_ps), _ps.attempts.right)
+        }
+      }.getOrElse((psMaybe, StateNotInitialized.left))
     }
-  }
 
   private val _attempts = GenLens[PlayerState](_.attempts)
   private val _points = GenLens[PlayerState](_.points)
-  private val _chans = GenLens[PlayerState](_.chans)
-  private val _challenge = GenLens[ChallengeWithAnswer](_.challenge)
+  private val _challenges = GenLens[PlayerState](_.challenges)
+  private val _current = GenLens[PlayerState](_.current)
 
-  private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(x => x + 1)(ps)
-  private val incPoints: PlayerState => PlayerState = ps => _points.modify(x => x + 10)(ps)
-  private val setNewChallenge: PlayerState => Challenge => PlayerState = ps => ch => (_chans ^|-> _challenge).set(ch)(ps)
+  private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(_ + 1)(ps)
+  private val incPoints: PlayerState => PlayerState = ps => _points.modify(_ + 10)(ps)
+  private val setCurrent: PlayerState => ChallengeWithAnswer => PlayerState = ps => ch => _current.set(ch.link.get)(ps)
+  private val addChallenge: PlayerState => ChallengeWithAnswer => PlayerState = ps => ch => _challenges.modify(x => x ++ Map(ch.link.get -> ch))(ps)
+
 }
 

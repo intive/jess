@@ -9,12 +9,10 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import cats.data.Xor.Left
-import core.state.{ Challenge, SomeError }
-import core.{ CorrectAnswer, GameActor, IncorrectAnswer, JessLink, ResponseAnswer, Stats }
+import com.blstream.jess.core.state.{ Challenge, ChallengeWithAnswer, SomeError }
+import core.{ GameActor, JessLink, Stats }
 import spray.json._
 
-import concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
@@ -41,7 +39,7 @@ object Meta extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat3(Challenge)
+  implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat5(Challenge)
 }
 
 case class ChallengeResponse(meta: Meta, challenge: Challenge)
@@ -67,10 +65,9 @@ trait GameRoute {
   lazy val gameRoute =
     pathPrefix("game" / Segment) { nick =>
       startGame(nick) ~
-        getChallenge(nick) ~
-        getCurrentChallenge(nick) ~
+        getChallengeStats(nick) ~
         path("challenge" / Segment) { challenge =>
-          getChallengeWithUuid(nick)(challenge) ~
+          getChallenge(nick)(challenge) ~
             postChallenge(nick)(challenge)
         }
     }
@@ -91,7 +88,7 @@ trait GameRoute {
               err => HttpResponse(StatusCodes.BadRequest, entity = err.toString),
               challenge =>
                 HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-                  meta = makeMeta(nick)("link_change_me"),
+                  meta = makeMeta(nick)(challenge.link.getOrElse("")),
                   challenge
                 ).toJson.prettyPrint)
             )
@@ -99,33 +96,20 @@ trait GameRoute {
         }
       }
 
-  private lazy val getChallenge: String => Route =
+  private lazy val getChallengeStats: String => Route =
     nick =>
       (path("challenge") & get) {
         complete {
           for {
-            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
+            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[Option[JessLink]]
             stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
           } yield {
-            ChallengeStatsResponse(meta = makeMeta(nick)(jessLink), stats)
+            ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)
           }
         }
       }
 
-  private lazy val getCurrentChallenge: String => Route =
-    nick =>
-      (path("challenge" / "current") & get) {
-        complete {
-          for {
-            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[JessLink]
-            challenge <- (gameActorRef ? GameActor.GetChallenge(nick, jessLink)).mapTo[Challenge]
-          } yield {
-            ChallengeResponse(meta = makeMeta(nick)(jessLink), challenge)
-          }
-        }
-      }
-
-  private lazy val getChallengeWithUuid: String => String => Route =
+  private lazy val getChallenge: String => String => Route =
     nick => challenge =>
       get {
         complete {
@@ -139,7 +123,7 @@ trait GameRoute {
       post {
         entity(as[PostAnswerRequest]) { par =>
           complete {
-            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
+            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeWithAnswer]]
             resp.map {
               case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
               case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
