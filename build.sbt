@@ -69,4 +69,4 @@ lazy val frontend =
 
 scalaJSStage in Global := FastOptStage
 
-addCommandAlias("testIt", ";reStart;gatling-it:test;reStop")
+addCommandAlias("testIt", ";jess/reStart;gatling-it:test;jess/reStop")
