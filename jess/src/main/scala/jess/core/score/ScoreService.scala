@@ -2,19 +2,21 @@ package com.blstream.jess
 package core.score
 
 import akka.actor.{ ActorRef, ActorSystem, Props }
-import akka.http.scaladsl.model.ws.{ Message, TextMessage }
+import akka.http.scaladsl.model.ws.{ TextMessage, Message }
 import akka.stream.actor.ActorPublisher
 import akka.stream.scaladsl._
 import com.typesafe.scalalogging.LazyLogging
+
 import concurrent.duration._
 
 trait ScoreService extends LazyLogging {
 
   def system: ActorSystem
+
   def scoreRouter: ActorRef
 
   def scoreFlow: Flow[Message, Message, _] = {
-
+    var count = 0
     val actor = system.actorOf(Props(classOf[ScorePublisher], scoreRouter))
     val ap = ActorPublisher[ScoreRouter.IncommingMessage](actor)
 
@@ -26,7 +28,10 @@ trait ScoreService extends LazyLogging {
     val src = Source
       .fromPublisher(ap)
       .via(toApi)
-      .keepAlive(10.seconds, () => ScoreService.Ping)
+      .keepAlive(10.seconds, () => {
+        count = count + 1
+        ScoreService.Ping(count)
+      })
 
     Flow.fromSinkAndSource(Sink.ignore, src.map(api => TextMessage.Strict(api.message)))
 
@@ -35,7 +40,6 @@ trait ScoreService extends LazyLogging {
 }
 
 object ScoreService {
-
   trait Api {
     def message: String
   }
@@ -48,6 +52,8 @@ object ScoreService {
     def message: String = s"Player $nick has earned point. Total score $score"
   }
 
-  case object Ping extends Api { val message: String = "" }
+  case class Ping(c: Int) extends Api {
+    val message: String = s"Ping-$c"
+  }
 
 }
