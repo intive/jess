@@ -1,4 +1,4 @@
-ol, ul {
-    max-height = 200px;
-    overflow-y = scroll;
+ul {
+    max-height: 200px;
+    overflow-y: scroll;
 }
