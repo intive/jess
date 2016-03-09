@@ -24,8 +24,7 @@ object GameBoard extends JSApp {
   def main(): Unit = {
 
     wsAddressInput.placeholder = "127.0.0.1:8090/stream"
-    wsAddressInput.defaultValue = "127.0.0.1:8090/stream"
-
+   
     joinButton.onclick = { (event: MouseEvent) =>
       consoleLog(wsAddressInput.value)
       joinBoardStream(wsAddressInput.value)
