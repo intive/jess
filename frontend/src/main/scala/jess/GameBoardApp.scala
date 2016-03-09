@@ -28,13 +28,13 @@ object GameBoard extends JSApp {
 
     joinButton.onclick = { (event: MouseEvent) =>
       consoleLog(wsAddressInput.value)
-      joinChat(wsAddressInput.value)
+      joinBoardStream(wsAddressInput.value)
       event.preventDefault()
     }
 
   }
 
-  private def joinChat(ws: String): Unit = {
+  private def joinBoardStream(ws: String): Unit = {
     val ws: WebSocket = new dom.WebSocket(s"ws://${wsAddressInput.value}")
     ws.onmessage = { (event: MessageEvent) =>
       val msg = event.data.toString
@@ -76,8 +76,6 @@ object GameBoard extends JSApp {
   private def eventList(events: Seq[GameEvent]) = {
     ul(
       `class` := "list-group",
-      css.maxHeight := 200.px,
-      css.overflowY := "scroll",
       events.reverse.map(e => li(
         `class` := "list-group-item",
         e.event
