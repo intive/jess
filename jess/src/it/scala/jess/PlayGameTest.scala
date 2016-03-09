@@ -11,9 +11,9 @@ class PlayGameTest extends Simulation {
   val httpConf = http.baseURL("http://localhost:8090")
   val jsonHeader = Map("Content-Type" -> "application/json")
 
-  val nextUser = UUID.randomUUID().toString.replace("-", "")
+  def nextUser = UUID.randomUUID().toString.replace("-", "")
   
-  val feeder = Iterator.continually(Map("username" -> s"user-$nextUser"))
+  def feeder = Iterator.continually(Map("username" -> s"user-$nextUser"))
 
   val happyGame = scenario("start")
     .feed(feeder)
