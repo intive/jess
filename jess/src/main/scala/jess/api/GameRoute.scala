@@ -32,10 +32,10 @@ object PostAnswerRequest extends SprayJsonSupport with DefaultJsonProtocol {
   }
 }
 
-case class Meta(current: String, stats: String)
+case class Meta(current: String, stats: String, link: String)
 
 object Meta extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val format = jsonFormat2(Meta.apply)
+  implicit val format = jsonFormat3(Meta.apply)
 }
 
 object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
@@ -75,7 +75,8 @@ trait GameRoute {
   private val makeMeta: String => JessLink => Meta = nick => link =>
     Meta(
       current = s"/game/$nick/challenge/$link",
-      stats = s"/game/$nick/challenge"
+      stats = s"/game/$nick/challenge",
+      link = link
     )
 
   private lazy val startGame: String => Route =
