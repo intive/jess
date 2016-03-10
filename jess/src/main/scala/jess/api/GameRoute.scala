@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import com.blstream.jess.core.state.{ Challenge, ChallengeWithAnswer, SomeError }
+import com.blstream.jess.core.state.{ GameFinished, Challenge, ChallengeWithAnswer, SomeError }
 import core.{ GameActor, JessLink, Stats }
 import spray.json._
 
@@ -127,6 +127,7 @@ trait GameRoute {
             val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeWithAnswer]]
             resp.map {
               case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
+              case Xor.Left(GameFinished) => StatusCodes.OK -> "Correct Answer, Game Finished"
               case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
             }
           }

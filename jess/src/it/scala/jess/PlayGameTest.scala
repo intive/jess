@@ -70,15 +70,14 @@ class PlayGameTest extends Simulation {
       .check(status.is(200))
       .check(jsonPath("$.link").is("${link}"))
       .check(jsonPath("$.level").is("2"))
+  ).exec(
+    http("post third answer")
+      .post("/game/${username}/challenge/${link}")
+      .headers(jsonHeader)
+      .body(StringBody("""{"answer":"233168"}"""))
+      .check(status.is(200))
+      .check(bodyString.is("Correct Answer, Game Finished"))
   )
-//    .exec(
-//    http("post third answer")
-//      .post("/game/${username}/challenge/${link}")
-//      .headers(jsonHeader)
-//      .body(StringBody("""{"answer":"233168"}"""))
-//      .check(status.is(200))
-//      .check(bodyString.is("Correct Answer"))
-//  )
 
   setUp(happyGame.inject(atOnceUsers(1))
     .protocols(httpConf))
