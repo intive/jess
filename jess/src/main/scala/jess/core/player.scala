@@ -141,16 +141,17 @@ trait PlayerLogic {
   val newChallenge: State[Option[PlayerState], Xor[SomeError, ChallengeWithAnswer]] =
     State { psMaybe =>
       {
-        for {
-          ps <- psMaybe
-          challenge <- nextChallenge(ps.challenge.level + 1)
+        val resPsXor = for {
+          ps <- Xor.fromOption(psMaybe, StateNotInitialized)
+          challenge <- Xor.fromOption(nextChallenge(ps.challenge.level + 1), GameFinished)
         } yield {
           val add: PlayerState => PlayerState = addChallenge(_)(challenge)
           val set: PlayerState => PlayerState = setCurrent(_)(challenge)
           val _ps = (add andThen set)(ps)
-          (Some(_ps), _ps.challenge.right)
+          _ps
         }
-      }.getOrElse((psMaybe, StateNotInitialized.left))
+        (if (resPsXor.isLeft) psMaybe else resPsXor.toOption, resPsXor.map(ns => ns.challenge))
+      }
     }
 
   val incrementAttempts: State[Option[PlayerState], Xor[SomeError, Int]] =
