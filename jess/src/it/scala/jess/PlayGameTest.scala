@@ -77,6 +77,13 @@ class PlayGameTest extends Simulation {
       .body(StringBody("""{"answer":"233168"}"""))
       .check(status.is(200))
       .check(bodyString.is("Correct Answer, Game Finished"))
+  ).exec(
+    http("get stats after third")
+      .get("/game/${username}/challenge")
+      .check(status.is(200))
+      .check(jsonPath("$.meta.link").saveAs("link"))
+      .check(jsonPath("$.stats.points").is("30"))
+      .check(jsonPath("$.stats.attempts").is("3"))
   )
 
   setUp(happyGame.inject(atOnceUsers(1))
