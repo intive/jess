@@ -57,7 +57,7 @@ class PlayerActor(scoreRouter: ActorRef)
             StateModified(someNewState)
           )(ev => {
               state = someNewState
-              sender ! chOrErr
+              sender ! chOrErr.map(_.withoutAnswer)
               val (nick, points) = (state.get.nick, state.get.points)
               scoreRouter ! ScoreRouter.Score(nick, points)
             })

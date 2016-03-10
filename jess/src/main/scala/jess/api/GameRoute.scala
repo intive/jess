@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import com.blstream.jess.core.state.{ GameFinished, Challenge, ChallengeWithAnswer, SomeError }
+import com.blstream.jess.core.state.{ GameFinished, Challenge, SomeError }
 import core.{ GameActor, JessLink, Stats }
 import spray.json._
 
@@ -42,13 +42,12 @@ object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat5(Challenge)
 }
 
-case class ChallengeResponse(meta: Meta, challenge: Challenge)
+case class ChallengeResponse(meta: Meta, challenge: Option[Challenge], answer: Option[Answer], gameStatus: Option[String])
 
 object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
-
   import ChallengeFormat._
-
-  implicit val format = jsonFormat2(ChallengeResponse.apply)
+  implicit val answerFormat = jsonFormat3(Answer)
+  implicit val format = jsonFormat4(ChallengeResponse.apply)
 }
 
 case class ChallengeStatsResponse(meta: Meta, stats: Stats)
@@ -60,6 +59,8 @@ object ChallengeStatsResponse extends SprayJsonSupport with DefaultJsonProtocol 
 
 case class ChallengeStats(meta: Meta, stats: Stats)
 
+case class Answer(correct: Boolean, points: String, error: Option[String])
+
 trait GameRoute {
 
   lazy val gameRoute =
@@ -68,7 +69,7 @@ trait GameRoute {
         getChallengeStats(nick) ~
         path("challenge" / Segment) { challenge =>
           getChallenge(nick)(challenge) ~
-            postChallenge(nick)(challenge)
+            answerChallenge(nick)(challenge)
         }
     }
 
@@ -81,7 +82,7 @@ trait GameRoute {
 
   private lazy val startGame: String => Route =
     nick =>
-      (path("start") & get) {
+      (path("start") & put) {
         complete {
           val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
           respF.map {
@@ -90,7 +91,9 @@ trait GameRoute {
               challenge =>
                 HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
                   meta = makeMeta(nick)(challenge.link.getOrElse("")),
-                  challenge
+                  challenge = Some(challenge),
+                  answer = None,
+                  gameStatus = Some("playing")
                 ).toJson.prettyPrint)
             )
           }
@@ -119,16 +122,37 @@ trait GameRoute {
         }
       }
 
-  private lazy val postChallenge: String => String => Route =
+  private lazy val answerChallenge: String => String => Route =
     nick => challenge =>
-      post {
+      put {
         entity(as[PostAnswerRequest]) { par =>
           complete {
-            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeWithAnswer]]
+            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
             resp.map {
-              case Xor.Right(_) => StatusCodes.OK -> "Correct Answer"
-              case Xor.Left(GameFinished) => StatusCodes.OK -> "Correct Answer, Game Finished"
-              case Xor.Left(err) => StatusCodes.BadRequest -> err.toString
+              case Xor.Right(challenge) =>
+                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+                  meta = makeMeta(nick)(challenge.link.getOrElse("")),
+                  challenge = Some(challenge),
+                  //TODO read points from Challenge
+                  answer = Some(Answer(correct = true, points = "+10", None)),
+                  gameStatus = Some("playing")
+                ).toJson.prettyPrint)
+              case Xor.Left(GameFinished) =>
+                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+                  meta = makeMeta(nick)(""),
+                  None,
+                  //TODO read points from Challenge
+                  answer = Some(Answer(correct = true, points = "+10", None)),
+                  gameStatus = Some("finished")
+                ).toJson.prettyPrint)
+              case Xor.Left(err) =>
+                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+                  meta = makeMeta(nick)(""),
+                  challenge = None,
+                  //TODO read points from Challenge
+                  answer = Some(Answer(correct = false, points = "0", Some(err.toString))),
+                  gameStatus = Some("playing")
+                ).toJson.prettyPrint)
             }
           }
         }
