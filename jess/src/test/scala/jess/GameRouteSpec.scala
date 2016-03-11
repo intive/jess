@@ -23,7 +23,7 @@ class GameRouteSpec
 
   "Game route" should {
     "start game" in {
-      Get("/game/marcin/start") ~> gameRoute ~> check {
+      Put("/game/marcin/start") ~> gameRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should include("meta")
         responseAs[String] should include regex """"/game/marcin/challenge/.+""""
