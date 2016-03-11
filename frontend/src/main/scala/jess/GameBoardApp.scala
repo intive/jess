@@ -1,15 +1,17 @@
 package com.blstream.jess
 
+
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 
 import scalajs.js.JSApp
 import scalajs.js.annotation.JSExport
+import scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scalatags.JsDom.all._
-import scalatags.JsDom.{styles => css}
 
 
 case class Score(player: String, points: Int)
+
 case class GameEvent(event: String)
 
 @JSExport
@@ -35,18 +37,31 @@ object GameBoard extends JSApp {
 
   private def joinBoardStream(ws: String): Unit = {
     val ws: WebSocket = new dom.WebSocket(s"ws://${wsAddressInput.value}")
-    ws.onmessage = { (event: MessageEvent) =>
-      val msg = event.data.toString
-      ev += GameEvent(msg)
+    ws.binaryType = "arraybuffer"
+    ws.onmessage = (event: MessageEvent) => {
 
-      val ch = dom.document.getElementById("game-board-events-panel")
-      ch.replaceChild(eventList(ev).render, ch.childNodes(2))
+      val bb = TypedArrayBuffer.wrap(event.data.asInstanceOf[ArrayBuffer])
 
-      val ch1 = dom.document.getElementById("game-board-score-panel")
-      ch1.replaceChild(scoreBoard(
-        List(
-          Score("Player-1", rnd.nextInt(100)), Score("Player-2", rnd.nextInt(100)), Score("Player-3", rnd.nextInt(100))
-        )), ch1.childNodes(2))
+      protocol.decode(bb) match {
+        case protocol.PlayerJoinsGame(player) => consoleLog(player)
+        case protocol.PlayerScoresPoint(player, point) => consoleLog(s"$player $point")
+        case protocol.Ping(_) => consoleLog("ping")
+      }
+
+
+
+//      ev += (protocol.decode(bb.array) match {
+//        case protocol.Ping(ts) => GameEvent(s"ping-$ts")
+//      })
+//
+//      val ch = dom.document.getElementById("game-board-events-panel")
+//      ch.replaceChild(eventList(ev).render, ch.childNodes(2))
+//
+//      val ch1 = dom.document.getElementById("game-board-score-panel")
+//      ch1.replaceChild(scoreBoard(
+//        List(
+//          Score("Player-1", rnd.nextInt(100)), Score("Player-2", rnd.nextInt(100)), Score("Player-3", rnd.nextInt(100))
+//        )), ch1.childNodes(2))
     }
   }
 
