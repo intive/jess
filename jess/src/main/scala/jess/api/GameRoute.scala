@@ -10,7 +10,7 @@ import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
 import com.blstream.jess.core.state.{ GameFinished, Challenge, SomeError }
-import core.{ GameActor, JessLink, Stats }
+import com.blstream.jess.core._
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -84,19 +84,8 @@ trait GameRoute {
     nick =>
       (path("start") & put) {
         complete {
-          val respF = (gameActorRef ? GameActor.Join(nick)).mapTo[Xor[SomeError, Challenge]]
-          respF.map {
-            case resp => resp.fold(
-              err => HttpResponse(StatusCodes.BadRequest, entity = err.toString),
-              challenge =>
-                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-                  meta = makeMeta(nick)(challenge.link.getOrElse("")),
-                  challenge = Some(challenge),
-                  answer = None,
-                  gameStatus = Some("playing")
-                ).toJson.prettyPrint)
-            )
-          }
+          val resp = (gameActorRef ? GameActor.Join(nick)).mapTo[SomeError Xor ChallengeServiceResponse]
+          resp.map(responseMapper(nick, _))
         }
       }
 
@@ -127,36 +116,40 @@ trait GameRoute {
       put {
         entity(as[PostAnswerRequest]) { par =>
           complete {
-            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, Challenge]]
-            resp.map {
-              case Xor.Right(challenge) =>
-                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-                  meta = makeMeta(nick)(challenge.link.getOrElse("")),
-                  challenge = Some(challenge),
-                  //TODO read points from Challenge
-                  answer = Some(Answer(correct = true, points = "+10", None)),
-                  gameStatus = Some("playing")
-                ).toJson.prettyPrint)
-              case Xor.Left(GameFinished) =>
-                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-                  meta = makeMeta(nick)(""),
-                  None,
-                  //TODO read points from Challenge
-                  answer = Some(Answer(correct = true, points = "+10", None)),
-                  gameStatus = Some("finished")
-                ).toJson.prettyPrint)
-              case Xor.Left(err) =>
-                HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
-                  meta = makeMeta(nick)(""),
-                  challenge = None,
-                  //TODO read points from Challenge
-                  answer = Some(Answer(correct = false, points = "0", Some(err.toString))),
-                  gameStatus = Some("playing")
-                ).toJson.prettyPrint)
-            }
+            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeServiceResponse]]
+            resp.map(responseMapper(nick, _))
           }
         }
       }
+
+  def responseMapper(nick: String, xor: Xor[SomeError, ChallengeServiceResponse]) = {
+    xor match {
+      case Xor.Right(NextChallenge(challenge)) =>
+        HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+          meta = makeMeta(nick)(challenge.link.getOrElse("")),
+          challenge = Some(challenge.withoutAnswer),
+          //TODO read points from Challenge
+          answer = Some(Answer(correct = true, points = "+10", None)),
+          gameStatus = Some("playing")
+        ).toJson.prettyPrint)
+      case Xor.Right(LastChallengeSolved) =>
+        HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+          meta = makeMeta(nick)(""),
+          None,
+          //TODO read points from Challenge
+          answer = Some(Answer(correct = true, points = "+10", None)),
+          gameStatus = Some("finished")
+        ).toJson.prettyPrint)
+      case Xor.Left(err) =>
+        HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
+          meta = makeMeta(nick)(""),
+          challenge = None,
+          //TODO read points from Challenge
+          answer = Some(Answer(correct = false, points = "0", Some(err.toString))),
+          gameStatus = Some("playing")
+        ).toJson.prettyPrint)
+    }
+  }
 
   implicit val timeout: Timeout
 

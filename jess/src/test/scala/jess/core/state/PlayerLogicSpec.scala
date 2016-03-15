@@ -17,21 +17,19 @@ class PlayerLogicSpec
 
   val link = "abc123"
 
-  val ps = Some(PlayerState(
+  val ps = PlayerState(
     "luke",
     points = 0,
     attempts = 0,
     current = link,
     challenges = Map(link -> ChallengeWithAnswer("title", "desc", "question", level = 0, Some(link), "Answer"))
-  ))
+  )
 
   test("update points") {
     val (newState, challenge) = updatePoints.run(ps).value
 
-    newState should not be (None)
-    newState.get should have('points(10))
+    newState should have('points(10))
     challenge should be(right)
-
   }
 
   test("check answer which is correct") {
@@ -51,8 +49,7 @@ class PlayerLogicSpec
   test("increment attempt") {
     val (newState, resp) = incrementAttempts.run(ps).value
 
-    newState should not be None
-    newState.get should have('attempts(1))
+    newState should have('attempts(1))
     resp should be(right)
     resp should ===(1.right)
   }
@@ -61,8 +58,8 @@ class PlayerLogicSpec
     val (newState, challenge) = newChallenge.run(ps).value
 
     challenge should be(right)
-    newState.get.current !== ps.get.current
-    newState.get.challenges.size === 2
+    newState.current !== ps.current
+    newState.challenges.size === 2
   }
 
   test("answer challenge") {
@@ -70,10 +67,9 @@ class PlayerLogicSpec
     val (newState, challenge) = answerChallenge(ans).run(ps).value
 
     challenge should be(right)
-    newState should not be None
-    newState.get should have('attempts(1))
-    newState.get should have('points(10))
-    newState.get.current !== ps.get.current
-    newState.get.challenges.size === 2
+    newState should have('attempts(1))
+    newState should have('points(10))
+    newState.current !== ps.current
+    newState.challenges.size === 2
   }
 }
