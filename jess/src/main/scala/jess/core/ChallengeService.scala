@@ -3,11 +3,17 @@ package core
 
 import java.util.UUID
 
-import state.ChallengeWithAnswer
+import cats.data.Xor
+import cats.syntax.xor._
+import com.blstream.jess.core.state.{ NoChallengesError, ChallengeWithAnswer }
 
 trait LinkGenerator {
   def nextLink = UUID.randomUUID().toString.replaceAll("-", "")
 }
+
+sealed trait ChallengeServiceResponse
+case class NextChallenge(challenge: ChallengeWithAnswer) extends ChallengeServiceResponse
+case object LastChallengeSolved extends ChallengeServiceResponse
 
 trait ChallengeService {
   linkGen: LinkGenerator =>
@@ -40,8 +46,11 @@ trait ChallengeService {
       )
     )
 
-  def nextChallenge(level: Int): Option[ChallengeWithAnswer] =
-    challenges.lift(level).map(x =>
-      ChallengeWithAnswer(x.title, x.description, x.assignment, x.level, link = Some(nextLink), x.answer))
-
+  def nextChallenge(level: Int): NoChallengesError.type Xor ChallengeServiceResponse =
+    if (challenges.isEmpty) NoChallengesError.left
+    else if (level >= challenges.size) LastChallengeSolved.right
+    else {
+      val ch = challenges(level)
+      NextChallenge(ChallengeWithAnswer(ch.title, ch.description, ch.assignment, ch.level, link = Some(nextLink), ch.answer)).right
+    }
 }
