@@ -56,6 +56,7 @@ object PlayerLogic {
   case object Stats extends PlayerAction
 
 }
+
 sealed trait SomeError
 case object EmptyNickError extends SomeError
 case object AlreadyTakenNickError extends SomeError
@@ -65,6 +66,7 @@ case object StateNotInitialized extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 case object IncorrectAnswer extends SomeError
+case object AlreadyAnswered extends SomeError
 
 trait NickValidator {
 
@@ -125,8 +127,10 @@ trait PlayerLogic {
   val checkAnswer: Answer => State[PlayerState, SomeError Xor Unit] =
     answer =>
       State(ps => {
-        val check = if (ps.challenges(answer.link).answer == answer.answer) ().right
-        else IncorrectAnswer.left
+        val check =
+          if (answer.link != ps.challenge.link.get) AlreadyAnswered.left
+          else if (ps.challenges(answer.link).answer == answer.answer) ().right
+          else IncorrectAnswer.left
         (ps, check)
       })
 

@@ -1,6 +1,7 @@
 package com.blstream.jess
 package core.state
 
+import cats.data.Xor
 import core.{ LinkGenerator, ChallengeService }
 import org.scalatest.FunSuite
 import cats.scalatest.XorMatchers
@@ -71,5 +72,28 @@ class PlayerLogicSpec
     newState should have('points(10))
     newState.current !== ps.current
     newState.challenges.size === 2
+  }
+
+  test("wrong answer challenge") {
+    val ans = PlayerLogic.Answer(link, "BadAnswer")
+    val (newState, challenge) = answerChallenge(ans).run(ps).value
+
+    challenge should be(Xor.Left(IncorrectAnswer))
+    newState should have('attempts(1))
+    newState should have('points(0))
+    newState.current === ps.current
+    newState.challenges.size === 1
+  }
+
+  test("answer challenge twice") {
+    val ans = PlayerLogic.Answer(link, "Answer")
+    val (newState, challenge) = answerChallenge(ans).run(ps).value
+    val (newnewState, newChallenge) = answerChallenge(ans).run(newState).value
+
+    newChallenge should be(left)
+    newnewState should have('attempts(2))
+    newnewState should have('points(10))
+    newnewState.current !== ps.current
+    newnewState.challenges.size === 2
   }
 }
