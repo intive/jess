@@ -67,7 +67,7 @@ trait Cache {
     if (cache.contains(nick)) {
       cache(nick)
     } else {
-      val ref = context.actorOf(Props(classOf[PlayerActor], scoreRouter), nick)
+      val ref = context.actorOf(Props(classOf[PlayerActor], scoreRouter, nick), nick)
       cache += (nick -> ref)
       ref
     }

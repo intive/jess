@@ -1,8 +1,8 @@
 package com.blstream.jess
 package core
 
-import akka.actor.ActorRef
-import akka.persistence.PersistentActor
+import akka.actor._
+import akka.persistence._
 import score.ScoreRouter
 import core.state._
 import cats.syntax.xor._
@@ -10,10 +10,10 @@ import cats.syntax.xor._
 case class PlayerStatus(attempts: Int, time: Long, points: Long)
 
 sealed trait PlayerEvents
-
 case class StateModified(ps: PlayerState) extends PlayerEvents
+case object BecomePlaying
 
-class PlayerActor(scoreRouter: ActorRef)
+class PlayerActor(scoreRouter: ActorRef, nick: String)
     extends PersistentActor
     with ChallengeService
     with LinkGenerator
@@ -22,7 +22,7 @@ class PlayerActor(scoreRouter: ActorRef)
 
   var stateMaybe: Option[PlayerState] = None
 
-  override def persistenceId: String = "player-actor"
+  override def persistenceId: String = s"player-$nick"
 
   def readyToPlay: Receive = {
     case sg @ PlayerLogic.StartGame(_) => {
@@ -30,7 +30,10 @@ class PlayerActor(scoreRouter: ActorRef)
       newStateMaybe match {
         case Some(someNewState) =>
           persist(
-            StateModified(someNewState)
+            List(
+              StateModified(someNewState),
+              BecomePlaying
+            )
           )(ev => {
               stateMaybe = Some(someNewState)
               sender ! chOrErr
@@ -78,12 +81,17 @@ class PlayerActor(scoreRouter: ActorRef)
         case None => sender ! StateNotInitialized
       }
   }
-
-  def gameFinished: Receive = {
-    case _ => sender ! "Game finished"
-  }
+  //
+  // def gameFinished: Receive = {
+  //   case _ => sender ! "Game finished"
+  // }
 
   override def receiveCommand: Receive = readyToPlay
-  override def receiveRecover: Receive = { case _ => }
+
+  override val receiveRecover: Receive = {
+    case StateModified(playerState) => stateMaybe = Some(playerState)
+    case BecomePlaying => context become playing
+    // case SnapshotOffer(_, snapshot: PlayerState) => stateMaybe = Some(snapshot)
+  }
 
 }
