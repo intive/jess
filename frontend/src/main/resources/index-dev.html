@@ -1,21 +1,67 @@
 <!DOCTYPE html>
-<html>
-  <head>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
     <title>Jess Game Board</title>
-  </head>
-  <body>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
 
 
-    <div id="jessApp"> </div> 
+<div id="game-board" class="container" style="margin-top: 15px;">
+
+    <div class="col-md-12">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-addon">ws://</span>
+                    <input type="text" class="form-control" placeholder="" id="ws-address">
+                       <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" id="ws-join">Connect</button>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div id="game-board-score" class="col-md-4 col-md-push-8">
+                <div id="game-board-score-panel" class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Score board</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div id="game-board-events" class="col-md-4 col-md-push-8">
+                <div id="game-board-events-panel" class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Events</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
 
 
-    <script type="text/javascript" src="../jess-jsdeps.js"></script>
-    <script type="text/javascript" src="../jess-fastopt.js"></script
-    <script type="text/javascript" src="../jess-launcher.js"></script>
-
-    <script type="text/javascript">
-      com.blstream.jess.GameBoard().main()
-    </script>
-  </body>
+<script type="text/javascript" src="../jess-jsdeps.js"></script>
+<script type="text/javascript" src="../jess-fastopt.js"></script>
+<script type="text/javascript" src="../jess-launcher.js"></script>
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<!-- Include all compiled plugins (below), or include individual files as needed -->
+<script src="js/bootstrap.min.js"></script>
+</body>
 </html>
