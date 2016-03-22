@@ -15,7 +15,10 @@ lazy val commonSettings = Seq(
     "-feature",
     "-language:postfixOps",
     "-language:higherKinds"
-  )
+  ),
+  libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.0",
+  libraryDependencies += "org.scodec" %%% "scodec-core" % "1.9.0",
+  unmanagedSourceDirectories in Compile += baseDirectory.value / ".." / "shared" / "src" / "main" / "scala"
 )
 
 lazy val jess = project.in(file("jess"))
