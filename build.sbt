@@ -61,15 +61,14 @@ lazy val frontend =
     .enablePlugins(ScalaJSPlugin)
     .settings(commonSettings)
     .settings(
-    persistLauncher in Compile := true,
+      persistLauncher in Compile := true,
       persistLauncher in Test := false,
       libraryDependencies ++= Seq(
         "org.scala-js" %%% "scalajs-dom" % "0.9.0",
         "com.lihaoyi" %%% "scalatags" % "0.5.4"
       ),
       jsDependencies += RuntimeDOM
-  )
-
+    )
 
 scalaJSStage in Global := FastOptStage
 
