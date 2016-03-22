@@ -30,7 +30,6 @@ object GameActor {
 class GameActor(scoreRouter: ActorRef)
     extends Actor
     with ChallengeService
-    with LinkGenerator
     with Cache
     with ActorLogging {
 

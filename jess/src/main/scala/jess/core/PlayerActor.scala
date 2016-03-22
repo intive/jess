@@ -16,7 +16,6 @@ case object BecomePlaying
 class PlayerActor(scoreRouter: ActorRef, nick: String)
     extends PersistentActor
     with ChallengeService
-    with LinkGenerator
     with PlayerLogic
     with NickValidator {
 
@@ -29,17 +28,20 @@ class PlayerActor(scoreRouter: ActorRef, nick: String)
       val (newStateMaybe, chOrErr) = startGame(sg).run(stateMaybe).value
       newStateMaybe match {
         case Some(someNewState) =>
-          persist(
+          persistAll(
             List(
               StateModified(someNewState),
               BecomePlaying
             )
-          )(ev => {
+          )(_ => ())
+          deferAsync() { _ =>
+            {
               stateMaybe = Some(someNewState)
               sender ! chOrErr
               scoreRouter ! ScoreRouter.Join(someNewState.nick)
               context become playing
-            })
+            }
+          }
         case None => sender ! chOrErr
       }
     }

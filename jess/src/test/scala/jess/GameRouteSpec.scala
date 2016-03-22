@@ -3,9 +3,9 @@ package api
 
 import akka.actor.{ ActorSystem, Props }
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{ RouteTestTimeout, ScalatestRouteTest }
 import akka.util.Timeout
-import core.GameActor
+import core.{ ChallengeActor, GameActor }
 import core.score.ScoreRouter
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
@@ -16,10 +16,13 @@ class GameRouteSpec
     with Matchers
     with ScalatestRouteTest {
 
+  implicit val routeTestTimeout = RouteTestTimeout(5 seconds)
+
   implicit val as = ActorSystem("test")
   implicit val timeout = Timeout(5 seconds)
   val scoreRouterRef = as.actorOf(Props[ScoreRouter], "router")
   val gameActorRef = as.actorOf(Props(classOf[GameActor], scoreRouterRef), "game")
+  val challengeActorRef = as.actorOf(Props(classOf[ChallengeActor]), "challenge")
 
   "Game route" should {
     "start game" in {

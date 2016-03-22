@@ -2,7 +2,7 @@ package com.blstream.jess
 package core.state
 
 import cats.data.Xor
-import core.{ LinkGenerator, ChallengeService }
+import core.{ ChallengeService }
 import org.scalatest.FunSuite
 import cats.scalatest.XorMatchers
 import org.scalatest.Matchers._
@@ -13,7 +13,6 @@ class PlayerLogicSpec
     with XorMatchers
     with PlayerLogic
     with ChallengeService
-    with LinkGenerator
     with NickValidator {
 
   val link = "abc123"

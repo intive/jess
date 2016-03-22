@@ -7,7 +7,8 @@ import akka.util.Timeout
 import api.{ GameRoute, HealthCheckRoute, Websocket }
 import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 import com.typesafe.scalalogging.LazyLogging
-import core.GameActor
+import com.blstream.jess.core.{ ChallengeActor, GameActor }
+import jess.core.AdminActor
 
 import scala.concurrent.duration._
 
@@ -23,6 +24,8 @@ object Main
   lazy val scoreRouter = system.actorOf(Props[ScoreRouter], "ScoreRouter")
   lazy val scorePublisherActor = system.actorOf(Props[ScorePublisher], "ScorePublisher")
   lazy val gameActorRef = system.actorOf(Props(classOf[GameActor], scoreRouter), "GameActor")
+  lazy val challengeActorRef = system.actorOf(Props(classOf[ChallengeActor]), "ChallengeActor")
+  lazy val adminActorRef = system.actorOf(Props(classOf[AdminActor]), "AdminActor")
 }
 
 abstract class Main

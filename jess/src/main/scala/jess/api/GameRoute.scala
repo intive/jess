@@ -9,8 +9,9 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import com.blstream.jess.core.state.{ GameFinished, Challenge, SomeError }
+import com.blstream.jess.core.state.{ ChallengeWithAnswer, Challenge, SomeError }
 import com.blstream.jess.core._
+import jess.core.AddChallenge
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,6 +31,10 @@ object PostAnswerRequest extends SprayJsonSupport with DefaultJsonProtocol {
 
     def write(par: PostAnswerRequest): JsValue = JsString(par.answer)
   }
+}
+
+object ChallengeWithAnswerFormat extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val formatChallenge: RootJsonFormat[ChallengeWithAnswer] = jsonFormat6(ChallengeWithAnswer)
 }
 
 case class Meta(current: String, stats: String, link: String)
@@ -71,7 +76,10 @@ trait GameRoute {
           getChallenge(nick)(challenge) ~
             answerChallenge(nick)(challenge)
         }
-    }
+    } ~
+      pathPrefix("admin" / "challenge") {
+        addChallenge
+      }
 
   private val makeMeta: String => JessLink => Meta = nick => link =>
     Meta(
@@ -151,8 +159,22 @@ trait GameRoute {
     }
   }
 
+  lazy val addChallenge: Route =
+    put {
+      path("add") {
+        import ChallengeWithAnswerFormat._
+        entity(as[ChallengeWithAnswer]) { chans =>
+          complete {
+            (challengeActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
+          }
+        }
+      }
+    }
+
   implicit val timeout: Timeout
 
   def gameActorRef: ActorRef
+
+  def challengeActorRef: ActorRef
 
 }
