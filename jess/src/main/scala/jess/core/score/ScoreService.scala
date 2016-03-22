@@ -27,11 +27,12 @@ trait ScoreService extends LazyLogging {
       case ScoreRouter.Score(nick, score) => protocol.PlayerScoresPoint(nick, score)
     }
 
-    val serialize: Flow[protocol.WsApi, ByteString, _] = Flow[protocol.WsApi].map { msg =>
-      {
-        val encode: ByteBuffer = protocol.encode(msg)
-        ByteString(encode)
-      }
+    val serialize: Flow[protocol.WsApi, ByteString, _] = Flow[protocol.WsApi].map {
+      msg =>
+        {
+          val encode: ByteBuffer = protocol.encode(msg)
+          ByteString(encode)
+        }
     }
     val src = Source
       .fromPublisher(ap)

@@ -4,9 +4,9 @@ package com.blstream.jess
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 
-import scalajs.js.JSApp
-import scalajs.js.annotation.JSExport
-import scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
+import scala.scalajs.js.JSApp
+import scala.scalajs.js.annotation.JSExport
+import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scalatags.JsDom.all._
 
 
@@ -21,6 +21,7 @@ object GameBoard extends JSApp {
   val wsAddressInput = dom.document.getElementById("ws-address").asInstanceOf[HTMLInputElement]
   val rnd = util.Random
   val ev = scala.collection.mutable.ArrayBuffer.empty[GameEvent]
+  val sc = scala.collection.mutable.HashMap.empty[String, Score]
 
   @JSExport
   def main(): Unit = {
@@ -32,7 +33,6 @@ object GameBoard extends JSApp {
       joinBoardStream(wsAddressInput.value)
       event.preventDefault()
     }
-
   }
 
   private def joinBoardStream(ws: String): Unit = {
@@ -40,33 +40,32 @@ object GameBoard extends JSApp {
     ws.binaryType = "arraybuffer"
     ws.onmessage = (event: MessageEvent) => {
 
-      val bb = TypedArrayBuffer.wrap(event.data.asInstanceOf[ArrayBuffer])
-
-      protocol.decode(bb) match {
-        case protocol.PlayerJoinsGame(player) => consoleLog(player)
-        case protocol.PlayerScoresPoint(player, point) => consoleLog(s"$player $point")
-        case protocol.Ping(_) => consoleLog("ping")
+      val message = TypedArrayBuffer.wrap(event.data.asInstanceOf[ArrayBuffer])
+      protocol.decode(message) match {
+        case protocol.PlayerJoinsGame(player) =>
+          ev += GameEvent(s"Player $player has joined the game")
+          sc.put(player, Score(player, 0))
+          consoleLog(player)
+        case protocol.PlayerScoresPoint(player, point) =>
+          ev += GameEvent(s"Player $player has scored point")
+          sc.put(player, Score(player, point))
+          consoleLog(s"$player $point")
+        case protocol.Ping(_) =>
+          consoleLog("ping")
       }
 
 
+      val eventsPanel = dom.document.getElementById("game-board-events-panel")
+      eventsPanel.replaceChild(eventList(ev).render, eventsPanel.childNodes(2))
 
-//      ev += (protocol.decode(bb.array) match {
-//        case protocol.Ping(ts) => GameEvent(s"ping-$ts")
-//      })
-//
-//      val ch = dom.document.getElementById("game-board-events-panel")
-//      ch.replaceChild(eventList(ev).render, ch.childNodes(2))
-//
-//      val ch1 = dom.document.getElementById("game-board-score-panel")
-//      ch1.replaceChild(scoreBoard(
-//        List(
-//          Score("Player-1", rnd.nextInt(100)), Score("Player-2", rnd.nextInt(100)), Score("Player-3", rnd.nextInt(100))
-//        )), ch1.childNodes(2))
+      val scorePanel = dom.document.getElementById("game-board-score-panel")
+      scorePanel.replaceChild(scoreBoard(sc.values.toSeq), scorePanel.childNodes(2))
+
     }
   }
 
 
-  private def scoreBoard(scores: List[Score]) = {
+  private def scoreBoard(scores: Seq[Score]) = {
     table(
       `class` := "table table-striped",
       thead(

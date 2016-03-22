@@ -29,7 +29,7 @@ package object protocol {
 
   object PlayerScoresPoint {
     implicit val codec: Codec[PlayerScoresPoint] = {
-      ("player" | utf8) :: ("score" | uint16)
+      ("player" | utf8) :: ("score" | int32)
     }.as[PlayerScoresPoint]
 
     implicit val discriminator: Discriminator[WsApi, PlayerScoresPoint, Int] = Discriminator(2)
