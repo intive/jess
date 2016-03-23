@@ -9,10 +9,10 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import com.blstream.jess.core.state.{ ChallengeWithAnswer, Challenge, SomeError }
-import com.blstream.jess.core._
-import jess.core.AddChallenge
 import spray.json._
+
+import core.state.{ ChallengeWithAnswer, Challenge, SomeError }
+import core._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -165,7 +165,7 @@ trait GameRoute {
         import ChallengeWithAnswerFormat._
         entity(as[ChallengeWithAnswer]) { chans =>
           complete {
-            (challengeActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
+            (adminActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
           }
         }
       }
@@ -175,6 +175,6 @@ trait GameRoute {
 
   def gameActorRef: ActorRef
 
-  def challengeActorRef: ActorRef
+  def adminActorRef: ActorRef
 
 }

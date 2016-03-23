@@ -13,7 +13,7 @@ sealed trait PlayerEvents
 case class StateModified(ps: PlayerState) extends PlayerEvents
 case object BecomePlaying
 
-class PlayerActor(scoreRouter: ActorRef, nick: String)
+class PlayerActor(scoreRouter: ActorRef, override val challengeActor: ActorRef, nick: String)
     extends PersistentActor
     with ChallengeService
     with PlayerLogic

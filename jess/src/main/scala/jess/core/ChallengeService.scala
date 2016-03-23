@@ -6,10 +6,10 @@ import java.util.UUID
 import akka.persistence.PersistentActor
 import akka.pattern.ask
 import akka.util.Timeout
+import akka.actor.ActorRef
 import cats.data.Xor
 import cats.syntax.xor._
-import com.blstream.jess.core.state.{ NoChallengesError, ChallengeWithAnswer }
-import jess.core.AddChallenge
+import state.{ NoChallengesError, ChallengeWithAnswer }
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -19,10 +19,11 @@ case class NextChallenge(challenge: ChallengeWithAnswer) extends ChallengeServic
 case object LastChallengeSolved extends ChallengeServiceResponse
 
 trait ChallengeService {
+  val challengeActor: ActorRef
   private implicit val timeout = Timeout(5 second)
 
   def nextChallenge(level: Int): NoChallengesError.type Xor ChallengeServiceResponse = {
-    val challengeF = ask(Main.challengeActorRef, NextChallengeCommand(level)).mapTo[NoChallengesError.type Xor ChallengeServiceResponse]
+    val challengeF = ask(challengeActor, NextChallengeCommand(level)).mapTo[NoChallengesError.type Xor ChallengeServiceResponse]
     Await.result(challengeF, 1 second)
   }
 }
@@ -76,6 +77,7 @@ class ChallengeActor extends PersistentActor {
       }
       sender ! resp
     }
+
     case AddChallenge(chans) => {
       persist(ChallengeAdded(chans))(ev => {
         challenges = challenges :+ chans
