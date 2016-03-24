@@ -4,32 +4,37 @@ import akka.actor.{ Actor, ActorLogging, ActorSystem, Props, UnhandledMessage }
 import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import api.{ GameRoute, HealthCheckRoute, Websocket }
-import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 import com.typesafe.scalalogging.LazyLogging
-import core.GameActor
+
+import api.{ GameRoute, HealthCheckRoute, AdminRoute, Websocket }
+import core.{ ChallengeActor, GameActor, AdminActor }
+import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 
 import scala.concurrent.duration._
+import com.typesafe.config.ConfigFactory
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigRenderOptions
 
 object Main
-    extends Main
-    with App
+    extends App
     with JessHttpService
     with GameRoute
     with HealthCheckRoute
+    with AdminRoute
     with Websocket
     with ScoreService {
 
+  val config = if (args.nonEmpty && args(0).equals("persistence=inmem")) Some(ConfigFactory.load.getConfig("inmem")) else None
+
+  val acName = "jess"
+  implicit val system: ActorSystem = config.fold(ActorSystem(acName))(c => ActorSystem(acName, c))
+
   lazy val scoreRouter = system.actorOf(Props[ScoreRouter], "ScoreRouter")
   lazy val scorePublisherActor = system.actorOf(Props[ScorePublisher], "ScorePublisher")
-  lazy val gameActorRef = system.actorOf(Props(classOf[GameActor], scoreRouter), "GameActor")
-}
+  lazy val challengeActorRef = system.actorOf(Props[ChallengeActor], "ChallengeActor")
+  lazy val gameActorRef = system.actorOf(Props(classOf[GameActor], scoreRouter, challengeActorRef), "GameActor")
+  lazy val adminActorRef = system.actorOf(Props(classOf[AdminActor], challengeActorRef), "AdminActor")
 
-abstract class Main
-    extends LazyLogging {
-  jess: JessHttpService =>
-
-  implicit val system: ActorSystem = ActorSystem("jess")
   val listener = system.actorOf(Props(new UnhandledMessageListener()))
   system.eventStream.subscribe(listener, classOf[UnhandledMessage])
   implicit val flowMaterializer = ActorMaterializer()

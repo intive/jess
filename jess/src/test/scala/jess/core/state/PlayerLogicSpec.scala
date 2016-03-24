@@ -2,18 +2,24 @@ package com.blstream.jess
 package core.state
 
 import cats.data.Xor
-import core.{ LinkGenerator, ChallengeService }
+import core.{ ChallengeService }
 import org.scalatest.FunSuite
 import cats.scalatest.XorMatchers
 import org.scalatest.Matchers._
 import cats.syntax.xor._
+import core.NextChallenge
+
+trait FakeChallengeService extends ChallengeService {
+  val challengeActor = null
+  override def nextChallenge(level: Int) =
+    NextChallenge(ChallengeWithAnswer("title", "desc", "assignment", 0, Some("abc123"), "111")).right
+}
 
 class PlayerLogicSpec
     extends FunSuite
     with XorMatchers
     with PlayerLogic
-    with ChallengeService
-    with LinkGenerator
+    with FakeChallengeService
     with NickValidator {
 
   val link = "abc123"

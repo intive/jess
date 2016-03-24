@@ -9,9 +9,10 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import com.blstream.jess.core.state.{ GameFinished, Challenge, SomeError }
-import com.blstream.jess.core._
 import spray.json._
+
+import core.state.{ ChallengeWithAnswer, Challenge, SomeError }
+import core._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -30,6 +31,10 @@ object PostAnswerRequest extends SprayJsonSupport with DefaultJsonProtocol {
 
     def write(par: PostAnswerRequest): JsValue = JsString(par.answer)
   }
+}
+
+object ChallengeWithAnswerFormat extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val formatChallenge: RootJsonFormat[ChallengeWithAnswer] = jsonFormat6(ChallengeWithAnswer)
 }
 
 case class Meta(current: String, stats: String, link: String)

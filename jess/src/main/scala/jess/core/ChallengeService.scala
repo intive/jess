@@ -3,22 +3,43 @@ package core
 
 import java.util.UUID
 
+import akka.persistence.PersistentActor
+import akka.pattern.ask
+import akka.util.Timeout
+import akka.actor.ActorRef
 import cats.data.Xor
 import cats.syntax.xor._
-import com.blstream.jess.core.state.{ NoChallengesError, ChallengeWithAnswer }
+import state.{ NoChallengesError, ChallengeWithAnswer }
 
-trait LinkGenerator {
-  def nextLink = UUID.randomUUID().toString.replaceAll("-", "")
-}
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 sealed trait ChallengeServiceResponse
 case class NextChallenge(challenge: ChallengeWithAnswer) extends ChallengeServiceResponse
 case object LastChallengeSolved extends ChallengeServiceResponse
 
 trait ChallengeService {
-  linkGen: LinkGenerator =>
+  val challengeActor: ActorRef
+  private implicit val timeout = Timeout(5 second)
 
-  private val challenges =
+  def nextChallenge(level: Int): NoChallengesError.type Xor ChallengeServiceResponse = {
+    val challengeF = ask(challengeActor, NextChallengeCommand(level)).mapTo[NoChallengesError.type Xor ChallengeServiceResponse]
+    Await.result(challengeF, 1 second)
+  }
+}
+
+sealed trait ChallengeCommand
+case class NextChallengeCommand(level: Int) extends ChallengeCommand
+
+sealed trait ChallengeEvent
+case class ChallengeAdded(chans: ChallengeWithAnswer) extends ChallengeEvent
+
+class ChallengeActor extends PersistentActor {
+  override def persistenceId: String = "challenge-actor"
+
+  def nextLink = UUID.randomUUID().toString.replaceAll("-", "")
+
+  private var challenges =
     Vector(
       ChallengeWithAnswer(
         level = 0,
@@ -46,11 +67,27 @@ trait ChallengeService {
       )
     )
 
-  def nextChallenge(level: Int): NoChallengesError.type Xor ChallengeServiceResponse =
-    if (challenges.isEmpty) NoChallengesError.left
-    else if (level >= challenges.size) LastChallengeSolved.right
-    else {
-      val ch = challenges(level)
-      NextChallenge(ChallengeWithAnswer(ch.title, ch.description, ch.assignment, ch.level, link = Some(nextLink), ch.answer)).right
+  override def receiveCommand: Receive = {
+    case NextChallengeCommand(level) => {
+      val resp = if (challenges.isEmpty) NoChallengesError.left
+      else if (level >= challenges.size) LastChallengeSolved.right
+      else {
+        val ch = challenges(level)
+        NextChallenge(ChallengeWithAnswer(ch.title, ch.description, ch.assignment, ch.level, link = Some(nextLink), ch.answer)).right
+      }
+      sender ! resp
     }
+
+    case AddChallenge(chans) => {
+      persist(ChallengeAdded(chans))(ev => {
+        challenges = challenges :+ chans
+        sender ! chans
+      })
+    }
+  }
+
+  override def receiveRecover: Receive = {
+    case ChallengeAdded(chans) => challenges = challenges :+ chans
+  }
+
 }

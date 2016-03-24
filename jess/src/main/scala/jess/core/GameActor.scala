@@ -27,10 +27,9 @@ object GameActor {
 
 }
 
-class GameActor(scoreRouter: ActorRef)
+class GameActor(scoreRouter: ActorRef, override val challengeActor: ActorRef)
     extends Actor
     with ChallengeService
-    with LinkGenerator
     with Cache
     with ActorLogging {
 
@@ -40,22 +39,22 @@ class GameActor(scoreRouter: ActorRef)
 
   override def receive = {
     case GameActor.Join(nick) =>
-      (getRef(nick, scoreRouter) ? PlayerLogic.StartGame(nick)) pipeTo sender
+      (getRef(nick, scoreRouter, challengeActor) ? PlayerLogic.StartGame(nick)) pipeTo sender
 
     case GameActor.GetChallenge(nick, link) =>
-      (getRef(nick, scoreRouter) ? PlayerLogic.GetChallenge(link)) pipeTo sender
+      (getRef(nick, scoreRouter, challengeActor) ? PlayerLogic.GetChallenge(link)) pipeTo sender
 
     case GameActor.PostChallenge(nick, link, answer) =>
-      (getRef(nick, scoreRouter) ? PlayerLogic.Answer(link, answer)) pipeTo sender
+      (getRef(nick, scoreRouter, challengeActor) ? PlayerLogic.Answer(link, answer)) pipeTo sender
 
     case GameActor.Stats(nick) =>
       //TODO when state transition error comes then class cast exception is thrown
-      val playerStats = (getRef(nick, scoreRouter) ? PlayerLogic.Stats).mapTo[PlayerStatus]
+      val playerStats = (getRef(nick, scoreRouter, challengeActor) ? PlayerLogic.Stats).mapTo[PlayerStatus]
       val stats = playerStats map (ps => Stats(ps.attempts, ps.time, ps.points))
       stats pipeTo sender
 
     case GameActor.Current(nick) =>
-      (getRef(nick, scoreRouter) ? PlayerLogic.Current) pipeTo sender
+      (getRef(nick, scoreRouter, challengeActor) ? PlayerLogic.Current) pipeTo sender
   }
 }
 
@@ -63,11 +62,11 @@ trait Cache {
   self: Actor =>
   var cache: collection.mutable.Map[Nick, ActorRef] = collection.mutable.Map.empty
 
-  def getRef(nick: Nick, scoreRouter: ActorRef) = {
+  def getRef(nick: Nick, scoreRouter: ActorRef, challengeActor: ActorRef) = {
     if (cache.contains(nick)) {
       cache(nick)
     } else {
-      val ref = context.actorOf(Props(classOf[PlayerActor], scoreRouter, nick), nick)
+      val ref = context.actorOf(Props(classOf[PlayerActor], scoreRouter, challengeActor, nick), nick)
       cache += (nick -> ref)
       ref
     }
