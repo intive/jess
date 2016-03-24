@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 
-import api.{ GameRoute, HealthCheckRoute, Websocket }
+import api.{ GameRoute, HealthCheckRoute, AdminRoute, Websocket }
 import core.{ ChallengeActor, GameActor, AdminActor }
 import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 
@@ -20,6 +20,7 @@ object Main
     with JessHttpService
     with GameRoute
     with HealthCheckRoute
+    with AdminRoute
     with Websocket
     with ScoreService {
 

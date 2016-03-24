@@ -76,10 +76,7 @@ trait GameRoute {
           getChallenge(nick)(challenge) ~
             answerChallenge(nick)(challenge)
         }
-    } ~
-      pathPrefix("admin" / "challenge") {
-        addChallenge
-      }
+    }
 
   private val makeMeta: String => JessLink => Meta = nick => link =>
     Meta(
@@ -159,22 +156,8 @@ trait GameRoute {
     }
   }
 
-  lazy val addChallenge: Route =
-    put {
-      path("add") {
-        import ChallengeWithAnswerFormat._
-        entity(as[ChallengeWithAnswer]) { chans =>
-          complete {
-            (adminActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
-          }
-        }
-      }
-    }
-
   implicit val timeout: Timeout
 
   def gameActorRef: ActorRef
-
-  def adminActorRef: ActorRef
 
 }
