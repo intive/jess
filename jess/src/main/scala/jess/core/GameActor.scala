@@ -5,6 +5,7 @@ import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 
 import akka.pattern._
 import akka.util.Timeout
+import com.blstream.jess.core.GameActor.AddChallenge
 
 import state._
 
@@ -24,6 +25,7 @@ object GameActor {
   case class PostChallenge(nick: Nick, link: JessLink, answer: String) extends GameMessages
   case class Stats(nick: Nick) extends GameMessages
   case class Current(nick: Nick) extends GameMessages
+  case class AddChallenge(challenge: ChallengeWithAnswer) extends GameMessages
 
 }
 
@@ -56,6 +58,12 @@ class GameActor(scoreRouter: ActorRef)
 
     case GameActor.Current(nick) =>
       (getRef(nick, scoreRouter) ? PlayerLogic.Current) pipeTo sender
+
+    case GameActor.AddChallenge(chans) => {
+      addChallenge(chans)
+      sender ! chans
+    }
+
   }
 }
 

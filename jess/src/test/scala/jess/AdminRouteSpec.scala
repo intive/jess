@@ -3,13 +3,13 @@ package api
 
 import akka.actor.{ ActorSystem, Props }
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.{ RouteTestTimeout, ScalatestRouteTest }
+import akka.http.scaladsl.testkit.{ ScalatestRouteTest }
 import akka.util.Timeout
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
 import spray.json._
 
-import core.{ ChallengeActor, GameActor, AdminActor }
+import core.{ GameActor }
 import core.score.ScoreRouter
 import core.state.ChallengeWithAnswer
 
@@ -19,12 +19,10 @@ class AdminRouteSpec
     with Matchers
     with ScalatestRouteTest {
 
-  implicit val timeout = Timeout(5.seconds)
-  //implicit val routeTestTimeout = RouteTestTimeout(5 seconds)
-
   implicit val as = ActorSystem("test")
-  val challengeActorRef = as.actorOf(Props[ChallengeActor], "challenge")
-  val adminActorRef = as.actorOf(Props(classOf[AdminActor], challengeActorRef), "admin")
+  implicit val timeout = Timeout(5 seconds)
+  val scoreRouterRef = as.actorOf(Props[ScoreRouter], "router")
+  val gameActorRef = as.actorOf(Props(classOf[GameActor], scoreRouterRef), "game")
 
   "Admin route" should {
     "add challenge" in {

@@ -6,9 +6,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
+import core.GameActor.AddChallenge
 
 import core.state.ChallengeWithAnswer
-import core.AddChallenge
 
 trait AdminRoute {
 
@@ -25,12 +25,12 @@ trait AdminRoute {
         import ChallengeWithAnswerFormat._
         entity(as[ChallengeWithAnswer]) { chans =>
           complete {
-            (adminActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
+            (gameActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
           }
         }
       }
     }
 
-  def adminActorRef: ActorRef
+  def gameActorRef: ActorRef
 
 }

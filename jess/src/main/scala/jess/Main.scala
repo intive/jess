@@ -7,7 +7,7 @@ import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 
 import api.{ GameRoute, HealthCheckRoute, AdminRoute, Websocket }
-import core.{ ChallengeActor, GameActor, AdminActor }
+import core.{ ChallengeService, GameActor }
 import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 
 import scala.concurrent.duration._
@@ -31,9 +31,7 @@ object Main
 
   lazy val scoreRouter = system.actorOf(Props[ScoreRouter], "ScoreRouter")
   lazy val scorePublisherActor = system.actorOf(Props[ScorePublisher], "ScorePublisher")
-  lazy val challengeActorRef = system.actorOf(Props[ChallengeActor], "ChallengeActor")
-  lazy val gameActorRef = system.actorOf(Props(classOf[GameActor], scoreRouter, challengeActorRef), "GameActor")
-  lazy val adminActorRef = system.actorOf(Props(classOf[AdminActor], challengeActorRef), "AdminActor")
+  lazy val gameActorRef = system.actorOf(Props(classOf[GameActor], scoreRouter), "GameActor")
 
   val listener = system.actorOf(Props(new UnhandledMessageListener()))
   system.eventStream.subscribe(listener, classOf[UnhandledMessage])
