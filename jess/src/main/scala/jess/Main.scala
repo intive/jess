@@ -4,16 +4,13 @@ import akka.actor.{ Actor, ActorLogging, ActorSystem, Props, UnhandledMessage }
 import akka.http.scaladsl._
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import com.typesafe.scalalogging.LazyLogging
 
 import api.{ GameRoute, HealthCheckRoute, AdminRoute, Websocket }
-import core.{ ChallengeService, GameActor }
+import core.GameActor
 import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 
 import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigRenderOptions
 
 object Main
     extends App

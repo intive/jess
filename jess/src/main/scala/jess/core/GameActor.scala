@@ -5,7 +5,6 @@ import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 
 import akka.pattern._
 import akka.util.Timeout
-import com.blstream.jess.core.GameActor.AddChallenge
 
 import state._
 
