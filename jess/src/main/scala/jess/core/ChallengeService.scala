@@ -18,7 +18,7 @@ case object LastChallengeSolved extends ChallengeServiceResponse
 trait ChallengeService {
   linkGen: LinkGenerator =>
 
-  private val challenges =
+  private var challenges =
     Vector(
       ChallengeWithAnswer(
         level = 0,
@@ -53,4 +53,6 @@ trait ChallengeService {
       val ch = challenges(level)
       NextChallenge(ChallengeWithAnswer(ch.title, ch.description, ch.assignment, ch.level, link = Some(nextLink), ch.answer)).right
     }
+
+  def addChallenge(chans: ChallengeWithAnswer) = challenges = challenges :+ chans
 }
