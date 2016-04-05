@@ -14,7 +14,7 @@ class PlayerLogicSpec
     with PlayerLogic
     with ChallengeService
     with LinkGenerator
-    with NickValidator {
+    with StartGameValidator {
 
   val link = "abc123"
 

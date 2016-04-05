@@ -67,6 +67,8 @@ case class Answer(correct: Boolean, points: String, error: Option[String])
 
 trait GameRoute {
 
+  gameService: GameService =>
+
   lazy val gameRoute =
     pathPrefix("game" / Segment) { nick =>
       startGame(nick) ~
@@ -88,7 +90,7 @@ trait GameRoute {
     nick =>
       (path("start") & put) {
         complete {
-          val resp = (gameActorRef ? GameActor.Join(nick)).mapTo[SomeError Xor ChallengeServiceResponse]
+          val resp = joinGameIo(nick)
           resp.map(responseMapper(nick, _))
         }
       }
@@ -156,6 +158,12 @@ trait GameRoute {
   }
 
   implicit val timeout: Timeout
+
+  implicit val gameStateActor: GameStateRef
+
+  val scoreRouter: ActorRef
+
+  implicit lazy val scoreRouterRef: ScoreRouterRef = ScoreRouterRef(scoreRouter)
 
   def gameActorRef: ActorRef
 

@@ -18,7 +18,7 @@ class PlayerActor(scoreRouter: ActorRef, nick: String)
     with ChallengeService
     with LinkGenerator
     with PlayerLogic
-    with NickValidator {
+    with StartGameValidator {
 
   var stateMaybe: Option[PlayerState] = None
 
