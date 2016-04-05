@@ -113,7 +113,10 @@ trait GameRoute {
       get {
         complete {
           import ChallengeFormat._
-          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
+          getChallengeIo(nick, challenge).map {
+            case Xor.Left(err) => err.toString.toJson.prettyPrint
+            case Xor.Right(ch) => ch.toJson.prettyPrint
+          }
         }
       }
 
@@ -157,6 +160,7 @@ trait GameRoute {
     }
   }
 
+  //TODO refactor to pass context dependencies as implicits
   implicit val timeout: Timeout
 
   implicit val gameStateActor: GameStateRef

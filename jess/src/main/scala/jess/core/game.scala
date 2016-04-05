@@ -6,10 +6,11 @@ import akka.persistence.PersistentActor
 import akka.util.Timeout
 import akka.pattern._
 import cats.data.Xor
+import cats.syntax.xor._
 import core.score.ScoreRouter
 import core.state.PlayerLogic.StartGame
 import core._
-import core.state.{ PlayerLogic, SomeError, PlayerState }
+import core.state._
 
 import scala.concurrent.{ Future, ExecutionContext }
 
@@ -34,6 +35,17 @@ trait GameService {
     for {
       (newStateMaybe, chOrErr) <- Future { startGame(StartGame(nick)).run(stateMaybe).value }
     } yield GameResponse(newStateMaybe, chOrErr)
+
+  def getChallengeIo(nick: Nick, link: JessLink)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Future[SomeError Xor Challenge] =
+    for {
+      stateMaybe <- (gameStateRef.actor ? GetPlayerState(nick)).mapTo[Option[PlayerState]]
+    } yield {
+      stateMaybe match {
+          //TODO fix for non existing link
+        case Some(st) => st.challenges(link).withoutAnswer.right
+        case None => StateNotInitialized.left
+      }
+    }
 }
 
 object GameStateActor {
