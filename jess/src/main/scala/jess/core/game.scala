@@ -41,8 +41,18 @@ trait GameService {
       stateMaybe <- (gameStateRef.actor ? GetPlayerState(nick)).mapTo[Option[PlayerState]]
     } yield {
       stateMaybe match {
-          //TODO fix for non existing link
+        //TODO fix for non existing link
         case Some(st) => st.challenges(link).withoutAnswer.right
+        case None => StateNotInitialized.left
+      }
+    }
+
+  def getCurrentIo(nick: Nick)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Future[SomeError Xor Option[JessLink]] =
+    for {
+      stateMaybe <- (gameStateRef.actor ? GetPlayerState(nick)).mapTo[Option[PlayerState]]
+    } yield {
+      stateMaybe match {
+        case Some(st) => st.challenge.link.right
         case None => StateNotInitialized.left
       }
     }

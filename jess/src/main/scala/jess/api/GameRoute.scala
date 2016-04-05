@@ -99,11 +99,17 @@ trait GameRoute {
     nick =>
       (path("challenge") & get) {
         complete {
+          import ChallengeFormat._
           for {
-            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[Option[JessLink]]
+            jessLinkXor <- getCurrentIo(nick)
             stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
           } yield {
-            ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)
+            (for {
+              jessLink <- jessLinkXor
+            } yield ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)) match {
+              case Xor.Left(err) => err.toString.toJson.prettyPrint
+              case Xor.Right(lnk) => lnk.toJson.prettyPrint
+            }
           }
         }
       }
