@@ -132,7 +132,7 @@ trait GameRoute {
       put {
         entity(as[PostAnswerRequest]) { par =>
           complete {
-            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeServiceResponse]]
+            val resp = answerGameChallengeIo(nick, challenge, par.answer)
             resp.map(responseMapper(nick, _))
           }
         }

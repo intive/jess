@@ -8,13 +8,14 @@ import akka.pattern._
 import cats.data.Xor
 import cats.syntax.xor._
 import core.score.ScoreRouter
-import core.state.PlayerLogic.StartGame
+import com.blstream.jess.core.state.PlayerLogic.{ Answer, StartGame }
 import core._
 import core.state._
 
 import scala.concurrent.{ Future, ExecutionContext }
 
-case class GameResponse(playerState: Option[PlayerState], resp: SomeError Xor ChallengeServiceResponse)
+case class JoinResponse(playerState: Option[PlayerState], resp: SomeError Xor ChallengeServiceResponse)
+case class AnswerResponse(playerState: PlayerState, resp: SomeError Xor ChallengeServiceResponse)
 
 trait GameService {
   self: PlayerLogic =>
@@ -31,10 +32,10 @@ trait GameService {
       gameResp.resp
     }
 
-  def joinGame(nick: Nick)(stateMaybe: Option[PlayerState])(implicit ec: ExecutionContext, timeout: Timeout): Future[GameResponse] =
+  def joinGame(nick: Nick)(stateMaybe: Option[PlayerState])(implicit ec: ExecutionContext, timeout: Timeout): Future[JoinResponse] =
     for {
       (newStateMaybe, chOrErr) <- Future { startGame(StartGame(nick)).run(stateMaybe).value }
-    } yield GameResponse(newStateMaybe, chOrErr)
+    } yield JoinResponse(newStateMaybe, chOrErr)
 
   def getChallengeIo(nick: Nick, link: JessLink)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Future[SomeError Xor Challenge] =
     for {
@@ -66,6 +67,21 @@ trait GameService {
         case None => StateNotInitialized.left
       }
     }
+
+  def answerGameChallengeIo(nick: Nick, link: JessLink, answer: String)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Future[SomeError Xor ChallengeServiceResponse] =
+    for {
+      stateMaybe <- (gameStateRef.actor ? GetPlayerState(nick)).mapTo[Option[PlayerState]]
+      gameResp <- answerGameChallenge(link, answer)(stateMaybe.get)
+      _ <- gameStateRef.actor ? SetPlayerState(nick, Some(gameResp.playerState))
+    } yield {
+      scoreRouterRef.actor ! ScoreRouter.Score(nick, gameResp.playerState.points)
+      gameResp.resp
+    }
+
+  def answerGameChallenge(link: JessLink, answer: String)(state: PlayerState)(implicit ec: ExecutionContext, timeout: Timeout): Future[AnswerResponse] =
+    for {
+      (newState, chOrErr) <- Future { answerChallenge(Answer(link, answer)).run(state).value }
+    } yield AnswerResponse(newState, chOrErr)
 }
 
 object GameStateActor {
