@@ -8,7 +8,7 @@ import akka.pattern._
 import cats.data.Xor
 import cats.syntax.xor._
 import core.score.ScoreRouter
-import com.blstream.jess.core.state.PlayerLogic.{ Answer, StartGame }
+import core.state.PlayerLogic.{ Answer, StartGame }
 import core._
 import core.state._
 
@@ -18,7 +18,7 @@ case class JoinResponse(playerState: Option[PlayerState], resp: SomeError Xor Ch
 case class AnswerResponse(playerState: PlayerState, resp: SomeError Xor ChallengeServiceResponse)
 
 trait GameService {
-  self: PlayerLogic =>
+  self: PlayerLogic with ChallengeService =>
 
   import GameStateActor._
 
@@ -82,6 +82,12 @@ trait GameService {
     for {
       (newState, chOrErr) <- Future { answerChallenge(Answer(link, answer)).run(state).value }
     } yield AnswerResponse(newState, chOrErr)
+
+  def addChallengeIo(chans: ChallengeWithAnswer)(implicit ec: ExecutionContext, timeout: Timeout): Future[ChallengeWithAnswer] =
+    for {
+      _ <- Future { addChallenge(chans) }
+      //TODO persist added challenge
+    } yield chans
 }
 
 object GameStateActor {

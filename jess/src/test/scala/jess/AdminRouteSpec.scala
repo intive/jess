@@ -3,19 +3,24 @@ package api
 
 import akka.actor.{ ActorSystem, Props }
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.{ ScalatestRouteTest }
+import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
 import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
 import spray.json._
 
-import core.{ GameActor }
+import core.{ LinkGenerator, ChallengeService, GameActor }
 import core.score.ScoreRouter
-import core.state.ChallengeWithAnswer
+import core.state.{ StartGameValidator, PlayerLogic, ChallengeWithAnswer }
 
 class AdminRouteSpec
     extends WordSpec
     with AdminRoute
+    with GameService
+    with PlayerLogic
+    with ChallengeService
+    with LinkGenerator
+    with StartGameValidator
     with Matchers
     with ScalatestRouteTest {
 
