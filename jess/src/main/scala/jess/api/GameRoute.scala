@@ -54,10 +54,10 @@ object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val format = jsonFormat4(ChallengeResponse.apply)
 }
 
-case class ChallengeStatsResponse(meta: Meta, stats: Stats)
+case class ChallengeStatsResponse(meta: Meta, stats: PlayerStatus)
 
 object ChallengeStatsResponse extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val statsFormat = jsonFormat3(core.Stats)
+  implicit val statsFormat = jsonFormat3(PlayerStatus)
   implicit val format = jsonFormat2(ChallengeStatsResponse.apply)
 }
 
@@ -102,10 +102,11 @@ trait GameRoute {
           import ChallengeFormat._
           for {
             jessLinkXor <- getCurrentIo(nick)
-            stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
+            statsXor <- getStatsIo(nick)
           } yield {
             (for {
               jessLink <- jessLinkXor
+              stats <- statsXor
             } yield ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)) match {
               case Xor.Left(err) => err.toString.toJson.prettyPrint
               case Xor.Right(lnk) => lnk.toJson.prettyPrint

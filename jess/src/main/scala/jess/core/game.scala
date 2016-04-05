@@ -56,6 +56,16 @@ trait GameService {
         case None => StateNotInitialized.left
       }
     }
+
+  def getStatsIo(nick: Nick)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Future[SomeError Xor PlayerStatus] =
+    for {
+      stateMaybe <- (gameStateRef.actor ? GetPlayerState(nick)).mapTo[Option[PlayerState]]
+    } yield {
+      stateMaybe match {
+        case Some(st) => PlayerStatus(st.attempts, 10, st.points).right
+        case None => StateNotInitialized.left
+      }
+    }
 }
 
 object GameStateActor {
