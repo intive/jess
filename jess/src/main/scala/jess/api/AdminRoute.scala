@@ -1,12 +1,10 @@
 package com.blstream.jess
 package api
 
-import akka.actor.ActorRef
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-
-import core.state.ChallengeWithAnswer
+import core.ChallengeWithAnswer
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

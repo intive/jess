@@ -8,9 +8,8 @@ import akka.pattern._
 import cats.data.Xor
 import cats.syntax.xor._
 import core.score.ScoreRouter
-import core.state.PlayerLogic.{ Answer, StartGame }
+import core.PlayerLogic.{ Answer, StartGame }
 import core._
-import core.state._
 
 import scala.concurrent.{ Future, ExecutionContext }
 

@@ -1,5 +1,4 @@
 package com.blstream.jess
-package integrationtests
 
 import java.util.UUID
 

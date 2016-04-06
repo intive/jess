@@ -5,13 +5,12 @@ import akka.actor.{ ActorSystem, Props }
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
+import core.score.ScoreRouter
+import core._
 import org.scalatest.{ Matchers, WordSpec }
-import concurrent.duration._
 import spray.json._
 
-import core.{ LinkGenerator, ChallengeService }
-import core.score.ScoreRouter
-import core.state.{ StartGameValidator, PlayerLogic, ChallengeWithAnswer }
+import scala.concurrent.duration._
 
 class AdminRouteSpec
     extends WordSpec

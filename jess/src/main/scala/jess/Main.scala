@@ -1,4 +1,5 @@
-package com.blstream.jess
+package com.blstream
+package jess
 
 import akka.actor._
 import akka.http.scaladsl._
@@ -6,8 +7,7 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 
 import api.{ GameRoute, HealthCheckRoute, AdminRoute, Websocket }
-import core.state.{ StartGameValidator, PlayerLogic }
-import com.blstream.jess.core._
+import core._
 import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 
 import scala.concurrent.duration._

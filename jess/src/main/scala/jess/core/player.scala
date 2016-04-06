@@ -1,10 +1,9 @@
-package com.blstream.jess
-package core.state
+package com.blstream
+package jess.core
 
 import cats.data.{ State, Xor }
 import cats.syntax.xor._
 
-import core._
 import monocle.macros.GenLens
 
 final case class PlayerState(

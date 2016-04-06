@@ -9,7 +9,6 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import core.state.{ ChallengeWithAnswer, Challenge, SomeError }
 import core._
 import spray.json._
 
