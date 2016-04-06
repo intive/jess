@@ -61,8 +61,6 @@ object ChallengeStatsResponse extends SprayJsonSupport with DefaultJsonProtocol 
   implicit val format = jsonFormat2(ChallengeStatsResponse.apply)
 }
 
-case class ChallengeStats(meta: Meta, stats: Stats)
-
 case class Answer(correct: Boolean, points: String, error: Option[String])
 
 trait GameRoute {
@@ -175,7 +173,5 @@ trait GameRoute {
   val scoreRouter: ActorRef
 
   implicit lazy val scoreRouterRef: ScoreRouterRef = ScoreRouterRef(scoreRouter)
-
-  def gameActorRef: ActorRef
 
 }

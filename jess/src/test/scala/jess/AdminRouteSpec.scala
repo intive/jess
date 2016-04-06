@@ -9,7 +9,7 @@ import org.scalatest.{ Matchers, WordSpec }
 import concurrent.duration._
 import spray.json._
 
-import core.{ LinkGenerator, ChallengeService, GameActor }
+import core.{ LinkGenerator, ChallengeService }
 import core.score.ScoreRouter
 import core.state.{ StartGameValidator, PlayerLogic, ChallengeWithAnswer }
 
@@ -27,7 +27,6 @@ class AdminRouteSpec
   implicit val as = ActorSystem("test")
   implicit val timeout = Timeout(5 seconds)
   val scoreRouterRef = as.actorOf(Props[ScoreRouter], "router")
-  val gameActorRef = as.actorOf(Props(classOf[GameActor], scoreRouterRef), "game")
 
   "Admin route" should {
     "add challenge" in {

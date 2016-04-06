@@ -27,7 +27,6 @@ class GameRouteSpec
   implicit val as = ActorSystem("test")
   implicit val timeout = Timeout(5 seconds)
   val scoreRouter: ActorRef = as.actorOf(Props[ScoreRouter], "router")
-  val gameActorRef = as.actorOf(Props(classOf[GameActor], scoreRouter), "game")
   implicit val gameStateActor = GameStateRef(as.actorOf(Props(classOf[GameStateActor], timeout), "GameStateActor"))
 
   "Game route" should {

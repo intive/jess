@@ -33,6 +33,4 @@ trait AdminRoute {
       }
     }
 
-  def gameActorRef: ActorRef
-
 }

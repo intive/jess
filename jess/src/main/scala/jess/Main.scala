@@ -36,7 +36,6 @@ object Main
 
   lazy val scoreRouter = system.actorOf(Props[ScoreRouter], "ScoreRouter")
   lazy val scorePublisherActor = system.actorOf(Props[ScorePublisher], "ScorePublisher")
-  lazy val gameActorRef = system.actorOf(Props(classOf[GameActor], scoreRouter), "GameActor")
   lazy val gameStateActor = GameStateRef(system.actorOf(Props(classOf[GameStateActor], timeout), "GameStateActor"))
 
   val listener = system.actorOf(Props(new UnhandledMessageListener()))

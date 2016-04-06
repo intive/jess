@@ -14,6 +14,8 @@ import core.state._
 
 import scala.concurrent.{ Future, ExecutionContext }
 
+case class PlayerStatus(attempts: Int, time: Long, points: Long)
+
 case class JoinResponse(playerState: Option[PlayerState], resp: SomeError Xor ChallengeServiceResponse)
 case class AnswerResponse(playerState: PlayerState, resp: SomeError Xor ChallengeServiceResponse)
 
