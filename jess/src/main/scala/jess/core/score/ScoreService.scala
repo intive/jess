@@ -3,7 +3,6 @@ package core.score
 
 import java.nio.ByteBuffer
 
-import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.http.scaladsl.model.ws.{ BinaryMessage, Message }
 import akka.stream.actor.ActorPublisher
 import akka.stream.scaladsl._
@@ -14,13 +13,9 @@ import concurrent.duration._
 
 trait ScoreService extends LazyLogging {
 
-  def system: ActorSystem
+  def scoreFlow(implicit scorePublisherRef: ScorePublisherRef): Flow[Message, Message, _] = {
 
-  def scoreRouter: ActorRef
-
-  def scoreFlow: Flow[Message, Message, _] = {
-    val actor = system.actorOf(Props(classOf[ScorePublisher], scoreRouter))
-    val ap = ActorPublisher[ScoreRouter.IncommingMessage](actor)
+    val ap = ActorPublisher[ScoreRouter.IncommingMessage](scorePublisherRef.actor)
 
     val toApi: Flow[ScoreRouter.IncommingMessage, protocol.WsApi, _] = Flow[ScoreRouter.IncommingMessage].map {
       case ScoreRouter.Join(nick) => protocol.PlayerJoinsGame(nick)

@@ -12,9 +12,7 @@ trait Websocket {
   self: ScoreService =>
   import Directives._
 
-  def system: ActorSystem
-
-  def wsRoute = path("stream") {
+  def wsRoute(implicit scorePublisherRef: ScorePublisherRef) = path("stream") {
     get {
       handleWebsocketMessages(scoreFlow)
     }

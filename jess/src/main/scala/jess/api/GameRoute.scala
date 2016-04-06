@@ -1,18 +1,16 @@
 package com.blstream.jess
 package api
 
-import akka.actor.ActorRef
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
 import core._
 import spray.json._
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 case class PostAnswerRequest(answer: String)
@@ -66,13 +64,13 @@ trait GameRoute {
 
   gameService: GameService =>
 
-  lazy val gameRoute =
+  def gameRoute(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef) =
     pathPrefix("game" / Segment) { nick =>
       startGame(nick) ~
         getChallengeStats(nick) ~
         path("challenge" / Segment) { challenge =>
-          getChallenge(nick)(challenge) ~
-            answerChallenge(nick)(challenge)
+          getChallenge(nick, challenge) ~
+            answerChallenge(nick, challenge)
         }
     }
 
@@ -83,57 +81,53 @@ trait GameRoute {
       link = link
     )
 
-  private lazy val startGame: String => Route =
-    nick =>
-      (path("start") & put) {
+  private def startGame(nick: String)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Route =
+    (path("start") & put) {
+      complete {
+        val resp = joinGameIo(nick)
+        resp.map(responseMapper(nick, _))
+      }
+    }
+
+  private def getChallengeStats(nick: String)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Route =
+    (path("challenge") & get) {
+      complete {
+        import ChallengeFormat._
+        for {
+          jessLinkXor <- getCurrentIo(nick)
+          statsXor <- getStatsIo(nick)
+        } yield {
+          (for {
+            jessLink <- jessLinkXor
+            stats <- statsXor
+          } yield ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)) match {
+            case Xor.Left(err) => err.toString.toJson.prettyPrint
+            case Xor.Right(lnk) => lnk.toJson.prettyPrint
+          }
+        }
+      }
+    }
+
+  private def getChallenge(nick: Nick, challenge: JessLink)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Route =
+    get {
+      complete {
+        import ChallengeFormat._
+        getChallengeIo(nick, challenge).map {
+          case Xor.Left(err) => err.toString.toJson.prettyPrint
+          case Xor.Right(ch) => ch.toJson.prettyPrint
+        }
+      }
+    }
+
+  private def answerChallenge(nick: Nick, challenge: JessLink)(implicit ec: ExecutionContext, timeout: Timeout, gameStateRef: GameStateRef, scoreRouterRef: ScoreRouterRef): Route =
+    put {
+      entity(as[PostAnswerRequest]) { par =>
         complete {
-          val resp = joinGameIo(nick)
+          val resp = answerGameChallengeIo(nick, challenge, par.answer)
           resp.map(responseMapper(nick, _))
         }
       }
-
-  private lazy val getChallengeStats: String => Route =
-    nick =>
-      (path("challenge") & get) {
-        complete {
-          import ChallengeFormat._
-          for {
-            jessLinkXor <- getCurrentIo(nick)
-            statsXor <- getStatsIo(nick)
-          } yield {
-            (for {
-              jessLink <- jessLinkXor
-              stats <- statsXor
-            } yield ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)) match {
-              case Xor.Left(err) => err.toString.toJson.prettyPrint
-              case Xor.Right(lnk) => lnk.toJson.prettyPrint
-            }
-          }
-        }
-      }
-
-  private lazy val getChallenge: String => String => Route =
-    nick => challenge =>
-      get {
-        complete {
-          import ChallengeFormat._
-          getChallengeIo(nick, challenge).map {
-            case Xor.Left(err) => err.toString.toJson.prettyPrint
-            case Xor.Right(ch) => ch.toJson.prettyPrint
-          }
-        }
-      }
-
-  private lazy val answerChallenge: String => String => Route =
-    nick => challenge =>
-      put {
-        entity(as[PostAnswerRequest]) { par =>
-          complete {
-            val resp = answerGameChallengeIo(nick, challenge, par.answer)
-            resp.map(responseMapper(nick, _))
-          }
-        }
-      }
+    }
 
   def responseMapper(nick: String, xor: Xor[SomeError, ChallengeServiceResponse]) = {
     xor match {
@@ -163,14 +157,5 @@ trait GameRoute {
         ).toJson.prettyPrint)
     }
   }
-
-  //TODO refactor to pass context dependencies as implicits
-  implicit val timeout: Timeout
-
-  implicit val gameStateActor: GameStateRef
-
-  val scoreRouter: ActorRef
-
-  implicit lazy val scoreRouterRef: ScoreRouterRef = ScoreRouterRef(scoreRouter)
 
 }
