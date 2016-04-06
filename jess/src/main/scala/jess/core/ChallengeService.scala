@@ -5,7 +5,6 @@ import java.util.UUID
 
 import cats.data.Xor
 import cats.syntax.xor._
-import com.blstream.jess.core.state.{ NoChallengesError, ChallengeWithAnswer }
 
 trait LinkGenerator {
   def nextLink = UUID.randomUUID().toString.replaceAll("-", "")

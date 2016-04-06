@@ -9,7 +9,6 @@ import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.util.Timeout
 import cats.data.Xor
-import core.state.{ ChallengeWithAnswer, Challenge, SomeError }
 import core._
 import spray.json._
 
@@ -54,18 +53,18 @@ object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val format = jsonFormat4(ChallengeResponse.apply)
 }
 
-case class ChallengeStatsResponse(meta: Meta, stats: Stats)
+case class ChallengeStatsResponse(meta: Meta, stats: PlayerStatus)
 
 object ChallengeStatsResponse extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val statsFormat = jsonFormat3(core.Stats)
+  implicit val statsFormat = jsonFormat3(PlayerStatus)
   implicit val format = jsonFormat2(ChallengeStatsResponse.apply)
 }
-
-case class ChallengeStats(meta: Meta, stats: Stats)
 
 case class Answer(correct: Boolean, points: String, error: Option[String])
 
 trait GameRoute {
+
+  gameService: GameService =>
 
   lazy val gameRoute =
     pathPrefix("game" / Segment) { nick =>
@@ -88,7 +87,7 @@ trait GameRoute {
     nick =>
       (path("start") & put) {
         complete {
-          val resp = (gameActorRef ? GameActor.Join(nick)).mapTo[SomeError Xor ChallengeServiceResponse]
+          val resp = joinGameIo(nick)
           resp.map(responseMapper(nick, _))
         }
       }
@@ -97,11 +96,18 @@ trait GameRoute {
     nick =>
       (path("challenge") & get) {
         complete {
+          import ChallengeFormat._
           for {
-            jessLink <- (gameActorRef ? GameActor.Current(nick)).mapTo[Option[JessLink]]
-            stats <- (gameActorRef ? GameActor.Stats(nick)).mapTo[Stats]
+            jessLinkXor <- getCurrentIo(nick)
+            statsXor <- getStatsIo(nick)
           } yield {
-            ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)
+            (for {
+              jessLink <- jessLinkXor
+              stats <- statsXor
+            } yield ChallengeStatsResponse(meta = makeMeta(nick)(jessLink.getOrElse("")), stats)) match {
+              case Xor.Left(err) => err.toString.toJson.prettyPrint
+              case Xor.Right(lnk) => lnk.toJson.prettyPrint
+            }
           }
         }
       }
@@ -111,7 +117,10 @@ trait GameRoute {
       get {
         complete {
           import ChallengeFormat._
-          (gameActorRef ? GameActor.GetChallenge(nick, challenge)).mapTo[Challenge]
+          getChallengeIo(nick, challenge).map {
+            case Xor.Left(err) => err.toString.toJson.prettyPrint
+            case Xor.Right(ch) => ch.toJson.prettyPrint
+          }
         }
       }
 
@@ -120,7 +129,7 @@ trait GameRoute {
       put {
         entity(as[PostAnswerRequest]) { par =>
           complete {
-            val resp = (gameActorRef ? GameActor.PostChallenge(nick, challenge, par.answer)).mapTo[Xor[SomeError, ChallengeServiceResponse]]
+            val resp = answerGameChallengeIo(nick, challenge, par.answer)
             resp.map(responseMapper(nick, _))
           }
         }
@@ -155,8 +164,13 @@ trait GameRoute {
     }
   }
 
+  //TODO refactor to pass context dependencies as implicits
   implicit val timeout: Timeout
 
-  def gameActorRef: ActorRef
+  implicit val gameStateActor: GameStateRef
+
+  val scoreRouter: ActorRef
+
+  implicit lazy val scoreRouterRef: ScoreRouterRef = ScoreRouterRef(scoreRouter)
 
 }

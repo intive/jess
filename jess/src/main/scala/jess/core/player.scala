@@ -1,10 +1,9 @@
-package com.blstream.jess
-package core.state
+package com.blstream
+package jess.core
 
 import cats.data.{ State, Xor }
 import cats.syntax.xor._
 
-import core._
 import monocle.macros.GenLens
 
 final case class PlayerState(
@@ -63,18 +62,20 @@ case object AlreadyTakenNickError extends SomeError
 case object GameFinished extends SomeError
 case object NoChallengesError extends SomeError
 case object StateNotInitialized extends SomeError
+case object GameAlreadyStarted extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 case object IncorrectAnswer extends SomeError
 case object AlreadyAnswered extends SomeError
 
-trait NickValidator {
+trait StartGameValidator {
 
-  val validate: String => SomeError Xor String =
-    nick =>
+  val validate: String => Option[PlayerState] => SomeError Xor String =
+    nick => ps =>
       for {
         _ <- notEmpty(nick)
         _ <- unique(nick)
+        _ <- notYetStarted(ps)
       } yield nick
 
   private val notEmpty: String => SomeError Xor String =
@@ -85,10 +86,15 @@ trait NickValidator {
   private val unique: String => SomeError Xor String =
     nick =>
       nick.right
+
+  private val notYetStarted: Option[PlayerState] => SomeError Xor Option[PlayerState] =
+    stateMaybe =>
+      if (stateMaybe.isEmpty) stateMaybe.right
+      else GameAlreadyStarted.left
 }
 
 trait PlayerLogic {
-  self: ChallengeService with NickValidator =>
+  self: ChallengeService with StartGameValidator =>
 
   import PlayerLogic._
 
@@ -96,7 +102,7 @@ trait PlayerLogic {
     start =>
       State(ps => {
         for {
-          nick <- validate(start.nick)
+          nick <- validate(start.nick)(ps)
           challengeResponse <- nextChallenge(0)
         } yield challengeResponse match {
           case lcs @ LastChallengeSolved => (ps, lcs.right) //will never happen

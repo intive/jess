@@ -1,36 +1,34 @@
 package com.blstream.jess
 package api
 
-import akka.actor.ActorRef
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.pattern.ask
 import akka.util.Timeout
-import core.GameActor.AddChallenge
+import core.ChallengeWithAnswer
 
-import core.state.ChallengeWithAnswer
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait AdminRoute {
+
+  gameService: GameService =>
 
   implicit val timeout: Timeout
 
   lazy val adminRoute: Route =
     pathPrefix("admin" / "challenge") {
-      addChallenge
+      putAddChallenge
     }
 
-  lazy val addChallenge: Route =
+  lazy val putAddChallenge: Route =
     put {
       path("add") {
         import ChallengeWithAnswerFormat._
         entity(as[ChallengeWithAnswer]) { chans =>
           complete {
-            (gameActorRef ? AddChallenge(chans)).mapTo[ChallengeWithAnswer]
+            addChallengeIo(chans)
           }
         }
       }
     }
-
-  def gameActorRef: ActorRef
 
 }

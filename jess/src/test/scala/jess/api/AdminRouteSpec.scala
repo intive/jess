@@ -3,26 +3,29 @@ package api
 
 import akka.actor.{ ActorSystem, Props }
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.{ ScalatestRouteTest }
+import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.Timeout
+import core.score.ScoreRouter
+import core._
 import org.scalatest.{ Matchers, WordSpec }
-import concurrent.duration._
 import spray.json._
 
-import core.{ GameActor }
-import core.score.ScoreRouter
-import core.state.ChallengeWithAnswer
+import scala.concurrent.duration._
 
 class AdminRouteSpec
     extends WordSpec
     with AdminRoute
+    with GameService
+    with PlayerLogic
+    with ChallengeService
+    with LinkGenerator
+    with StartGameValidator
     with Matchers
     with ScalatestRouteTest {
 
   implicit val as = ActorSystem("test")
   implicit val timeout = Timeout(5 seconds)
   val scoreRouterRef = as.actorOf(Props[ScoreRouter], "router")
-  val gameActorRef = as.actorOf(Props(classOf[GameActor], scoreRouterRef), "game")
 
   "Admin route" should {
     "add challenge" in {
