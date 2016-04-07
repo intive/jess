@@ -40,7 +40,7 @@ class PlayGameTest extends Simulation {
         .body(StringBody("""{"answer":"4"}"""))
         .check(status.is(200))
         .check(jsonPath("$.answer.correct").is("true"))
-        .check(jsonPath("$.answer.points").is("+10"))
+        .check(jsonPath("$.answer.points").is("+15"))
         .check(jsonPath("$.gameStatus").is("playing"))
         .check(jsonPath("$.challenge.link").saveAs("link"))
     ).exec(
@@ -50,7 +50,7 @@ class PlayGameTest extends Simulation {
         .body(StringBody("""{"answer":"233168"}"""))
         .check(status.is(200))
         .check(jsonPath("$.answer.correct").is("true"))
-        .check(jsonPath("$.answer.points").is("+10"))
+        .check(jsonPath("$.answer.points").is("+20"))
         .check(jsonPath("$.gameStatus").is("finished"))
     )
 

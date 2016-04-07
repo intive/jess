@@ -30,7 +30,7 @@ class AdminRouteSpec
   "Admin route" should {
     "add challenge" in {
       import ChallengeWithAnswerFormat._
-      val chans = ChallengeWithAnswer("title", "description", "assignment", 1, None, "42")
+      val chans = ChallengeWithAnswer("title", "description", "assignment", 1, None, 10, "42")
       Put("/admin/challenge/add", chans) ~> adminRoute ~> check {
         status === StatusCodes.OK
         responseAs[String] should equal(chans.toJson.prettyPrint)

@@ -22,6 +22,7 @@ abstract class ChallengeBase {
   val assignment: String
   val level: Int
   val link: Option[String]
+  val challengePoints: Int
 }
 
 case class Challenge(
@@ -29,7 +30,8 @@ case class Challenge(
   override val description: String,
   override val assignment: String,
   override val level: Int,
-  override val link: Option[String]
+  override val link: Option[String],
+  override val challengePoints: Int
 ) extends ChallengeBase
 
 final case class ChallengeWithAnswer(
@@ -38,10 +40,11 @@ final case class ChallengeWithAnswer(
     override val assignment: String,
     override val level: Int,
     override val link: Option[String],
+    override val challengePoints: Int,
     answer: String
 ) extends ChallengeBase {
 
-  def withoutAnswer = Challenge(title, description, assignment, level, link)
+  def withoutAnswer = Challenge(title, description, assignment, level, link, challengePoints)
 
 }
 
@@ -64,6 +67,7 @@ case object NoChallengesError extends SomeError
 case object StateNotInitialized extends SomeError
 case object GameAlreadyStarted extends SomeError
 case object NonExistingChallengeLink extends SomeError
+case object ChallengeError extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 case object IncorrectAnswer extends SomeError
@@ -106,12 +110,12 @@ trait PlayerLogic {
           nick <- validate(start.nick)(ps)
           challengeResponse <- nextChallenge(0)
         } yield challengeResponse match {
-          case lcs @ LastChallengeSolved => (ps, lcs.right) //will never happen
-          case nc @ NextChallenge(challenge) =>
+          case nc @ NextChallenge(None, Some(challenge)) =>
             (
               Some(PlayerState(nick = nick, current = challenge.link.get, challenges = Map(challenge.link.get -> challenge))),
               nc.right
             )
+          case NextChallenge(_, _) => (ps, NoChallengesError.left)
         }
       }.fold(
         err => (ps, err.left),
@@ -155,13 +159,14 @@ trait PlayerLogic {
           challengeResponse <- nextChallenge(ps.challenge.level + 1)
         } yield {
           challengeResponse match {
-            case lcs @ LastChallengeSolved => (ps, lcs.right)
-            case nc @ NextChallenge(challenge) => {
+            case lcs @ NextChallenge(Some(solved), None) => (ps, lcs.right)
+            case nc @ NextChallenge(Some(solved), Some(challenge)) => {
               val add: PlayerState => PlayerState = addChallenge(_)(challenge)
               val set: PlayerState => PlayerState = setCurrent(_)(challenge)
               val _ps = (add andThen set)(ps)
               (_ps, nc.right)
             }
+            case NextChallenge(_, _) => (ps, ChallengeError.left)
           }
         }
       }.fold(
@@ -183,7 +188,7 @@ trait PlayerLogic {
   private val _current = GenLens[PlayerState](_.current)
 
   private val incAttempt: PlayerState => PlayerState = ps => _attempts.modify(_ + 1)(ps)
-  private val incPoints: PlayerState => PlayerState = ps => _points.modify(_ + 10)(ps)
+  private val incPoints: PlayerState => PlayerState = ps => _points.modify(_ + ps.challenge.challengePoints)(ps)
   private val setCurrent: PlayerState => ChallengeWithAnswer => PlayerState = ps => ch => _current.set(ch.link.get)(ps)
   private val addChallenge: PlayerState => ChallengeWithAnswer => PlayerState = ps => ch => _challenges.modify(x => x ++ Map(ch.link.get -> ch))(ps)
 

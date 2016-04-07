@@ -22,7 +22,7 @@ class PlayerLogicSpec
     points = 0,
     attempts = 0,
     current = link,
-    challenges = Map(link -> ChallengeWithAnswer("title", "desc", "question", level = 0, Some(link), "Answer"))
+    challenges = Map(link -> ChallengeWithAnswer("title", "desc", "question", level = 0, Some(link), 10, "Answer"))
   )
 
   test("update points") {
