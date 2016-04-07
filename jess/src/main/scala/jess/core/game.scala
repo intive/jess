@@ -43,8 +43,7 @@ trait GameService {
       stateMaybe <- (gameStateRef.actor ? GetPlayerState(nick)).mapTo[Option[PlayerState]]
     } yield {
       stateMaybe match {
-        //TODO fix for non existing link
-        case Some(st) => st.challenges(link).withoutAnswer.right
+        case Some(st) => st.challenges.get(link).fold[SomeError Xor Challenge](NonExistingChallengeLink.left)(_.withoutAnswer.right)
         case None => StateNotInitialized.left
       }
     }

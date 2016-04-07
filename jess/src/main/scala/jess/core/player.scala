@@ -63,6 +63,7 @@ case object GameFinished extends SomeError
 case object NoChallengesError extends SomeError
 case object StateNotInitialized extends SomeError
 case object GameAlreadyStarted extends SomeError
+case object NonExistingChallengeLink extends SomeError
 
 final case class StateTransitionError(message: String) extends SomeError
 case object IncorrectAnswer extends SomeError
