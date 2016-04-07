@@ -6,20 +6,18 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import core.ChallengeWithAnswer
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 
 trait AdminRoute {
 
   gameService: GameService =>
 
-  implicit val timeout: Timeout
-
-  lazy val adminRoute: Route =
+  def adminRoute(implicit ec: ExecutionContext, timeout: Timeout): Route =
     pathPrefix("admin" / "challenge") {
       putAddChallenge
     }
 
-  lazy val putAddChallenge: Route =
+  private def putAddChallenge(implicit ec: ExecutionContext, timeout: Timeout): Route =
     put {
       path("add") {
         import ChallengeWithAnswerFormat._

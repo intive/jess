@@ -13,6 +13,8 @@ import core.score.{ ScoreService, ScorePublisher, ScoreRouter }
 import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 object Main
     extends App
     with JessHttpService
@@ -29,14 +31,13 @@ object Main
 
   val config = if (args.nonEmpty && args(0).equals("persistence=inmem")) Some(ConfigFactory.load.getConfig("inmem")) else None
 
+  private val acName = "jess"
+
   implicit val timeout = Timeout(5 seconds)
-
-  val acName = "jess"
   implicit val system: ActorSystem = config.fold(ActorSystem(acName))(c => ActorSystem(acName, c))
-
-  lazy val scoreRouter = system.actorOf(Props[ScoreRouter], "ScoreRouter")
-  lazy val scorePublisherActor = system.actorOf(Props[ScorePublisher], "ScorePublisher")
-  lazy val gameStateActor = GameStateRef(system.actorOf(Props(classOf[GameStateActor], timeout), "GameStateActor"))
+  implicit lazy val scoreRouter = ScoreRouterRef(system.actorOf(Props[ScoreRouter], "ScoreRouter"))
+  implicit lazy val gameStateActor = GameStateRef(system.actorOf(Props(classOf[GameStateActor], timeout), "GameStateActor"))
+  implicit lazy val scorePublisherActor = ScorePublisherRef(system.actorOf(Props(classOf[ScorePublisher], scoreRouter.actor), "ScorePublisher"))
 
   val listener = system.actorOf(Props(new UnhandledMessageListener()))
   system.eventStream.subscribe(listener, classOf[UnhandledMessage])
@@ -50,6 +51,7 @@ object Main
 
 case class GameStateRef(actor: ActorRef)
 case class ScoreRouterRef(actor: ActorRef)
+case class ScorePublisherRef(actor: ActorRef)
 
 class UnhandledMessageListener extends Actor with ActorLogging {
 
