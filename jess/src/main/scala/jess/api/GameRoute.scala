@@ -43,10 +43,17 @@ object ChallengeFormat extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val formatChallenge: RootJsonFormat[Challenge] = jsonFormat6(Challenge)
 }
 
-case class ChallengeResponse(meta: Meta, challenge: Option[Challenge], answer: Option[Answer], gameStatus: Option[String])
+case class ChallengeResponse(meta: Meta, challenge: Option[Challenge], answer: Option[Answer], gameStatus: Option[GameMode])
 
 object ChallengeResponse extends SprayJsonSupport with DefaultJsonProtocol {
   import ChallengeFormat._
+  implicit val gameModeFormat = new RootJsonFormat[GameMode] {
+    def write(obj: GameMode): JsValue = obj match {
+      case Playing => Playing.toString.toJson
+      case Finished => Finished.toString.toJson
+    }
+    def read(json: JsValue): GameMode = ???
+  }
   implicit val answerFormat = jsonFormat3(Answer)
   implicit val format = jsonFormat4(ChallengeResponse.apply)
 }
@@ -59,6 +66,10 @@ object ChallengeStatsResponse extends SprayJsonSupport with DefaultJsonProtocol 
 }
 
 case class Answer(correct: Boolean, points: String, error: Option[String])
+
+sealed trait GameMode
+case object Playing extends GameMode
+case object Finished extends GameMode
 
 trait GameRoute {
 
@@ -136,35 +147,35 @@ trait GameRoute {
           meta = makeMeta(nick)(challenge.link.getOrElse("")),
           challenge = Some(challenge.withoutAnswer),
           answer = Some(Answer(correct = true, points = s"+${solved.challengePoints}", None)),
-          gameStatus = Some("playing")
+          gameStatus = Some(Playing)
         ).toJson.prettyPrint)
       case Xor.Right(NextChallenge(None, Some(challenge))) =>
         HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
           meta = makeMeta(nick)(challenge.link.getOrElse("")),
           challenge = Some(challenge.withoutAnswer),
           answer = Some(Answer(correct = true, points = "0", None)),
-          gameStatus = Some("playing")
+          gameStatus = Some(Playing)
         ).toJson.prettyPrint)
       case Xor.Right(NextChallenge(Some(solved), None)) =>
         HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
           meta = makeMeta(nick)(""),
           None,
           answer = Some(Answer(correct = true, points = s"+${solved.challengePoints}", None)),
-          gameStatus = Some("finished")
+          gameStatus = Some(Finished)
         ).toJson.prettyPrint)
       case Xor.Right(NextChallenge(None, None)) =>
         HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
           meta = makeMeta(nick)(""),
           challenge = None,
           answer = Some(Answer(correct = false, points = "0", None)),
-          gameStatus = Some("playing")
+          gameStatus = Some(Playing)
         ).toJson.prettyPrint)
       case Xor.Left(err) =>
         HttpResponse(StatusCodes.OK, entity = ChallengeResponse(
           meta = makeMeta(nick)(""),
           challenge = None,
           answer = Some(Answer(correct = false, points = "0", Some(err.toString))),
-          gameStatus = Some("playing")
+          gameStatus = Some(Playing)
         ).toJson.prettyPrint)
     }
   }
