@@ -52,7 +52,7 @@ class GameStatsTest extends Simulation {
     http("get stats after second")
       .get("/game/${username}/challenge")
       .check(status.is(200))
-      .check(jsonPath("$.stats.points").is("20"))
+      .check(jsonPath("$.stats.points").is("25"))
       .check(jsonPath("$.stats.attempts").is("2"))
       .check(jsonPath("$.meta.link").saveAs("link"))
   ).exec(
@@ -65,7 +65,7 @@ class GameStatsTest extends Simulation {
     http("get stats after third")
       .get("/game/${username}/challenge")
       .check(status.is(200))
-      .check(jsonPath("$.stats.points").is("30"))
+      .check(jsonPath("$.stats.points").is("45"))
       .check(jsonPath("$.stats.attempts").is("3"))
   )
 

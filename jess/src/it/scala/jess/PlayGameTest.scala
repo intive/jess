@@ -31,7 +31,7 @@ class PlayGameTest extends Simulation {
         .check(status.is(200))
         .check(jsonPath("$.answer.correct").is("true"))
         .check(jsonPath("$.answer.points").is("+10"))
-        .check(jsonPath("$.gameStatus").is("playing"))
+        .check(jsonPath("$.gameStatus").is("Playing"))
         .check(jsonPath("$.challenge.link").saveAs("link"))
     ).exec(
       http("put second answer")
@@ -40,8 +40,8 @@ class PlayGameTest extends Simulation {
         .body(StringBody("""{"answer":"4"}"""))
         .check(status.is(200))
         .check(jsonPath("$.answer.correct").is("true"))
-        .check(jsonPath("$.answer.points").is("+10"))
-        .check(jsonPath("$.gameStatus").is("playing"))
+        .check(jsonPath("$.answer.points").is("+15"))
+        .check(jsonPath("$.gameStatus").is("Playing"))
         .check(jsonPath("$.challenge.link").saveAs("link"))
     ).exec(
       http("put third answer")
@@ -50,8 +50,8 @@ class PlayGameTest extends Simulation {
         .body(StringBody("""{"answer":"233168"}"""))
         .check(status.is(200))
         .check(jsonPath("$.answer.correct").is("true"))
-        .check(jsonPath("$.answer.points").is("+10"))
-        .check(jsonPath("$.gameStatus").is("finished"))
+        .check(jsonPath("$.answer.points").is("+20"))
+        .check(jsonPath("$.gameStatus").is("Finished"))
     )
 
   setUp(happyGame.inject(atOnceUsers(1))

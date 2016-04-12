@@ -11,8 +11,7 @@ trait LinkGenerator {
 }
 
 sealed trait ChallengeServiceResponse
-case class NextChallenge(challenge: ChallengeWithAnswer) extends ChallengeServiceResponse
-case object LastChallengeSolved extends ChallengeServiceResponse
+case class NextChallenge(solved: Option[ChallengeWithAnswer], nextChallenge: Option[ChallengeWithAnswer]) extends ChallengeServiceResponse
 
 trait ChallengeService {
   linkGen: LinkGenerator =>
@@ -25,7 +24,8 @@ trait ChallengeService {
         description = "This is a question about live",
         assignment = "What is the sense of live",
         answer = "42",
-        link = None
+        link = None,
+        challengePoints = 10
       ),
       ChallengeWithAnswer(
         level = 1,
@@ -33,7 +33,8 @@ trait ChallengeService {
         description = "Level is complicated number, try multiplying it",
         assignment = "Multiply level (2) by factor 2",
         answer = "4",
-        link = None
+        link = None,
+        challengePoints = 15
       ),
       ChallengeWithAnswer(
         level = 2,
@@ -41,16 +42,18 @@ trait ChallengeService {
         description = """If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.""",
         assignment = "Find the sum of all the multiples of 3 or 5 below 1000.",
         answer = "233168",
-        link = None
+        link = None,
+        challengePoints = 20
       )
     )
 
   def nextChallenge(level: Int): NoChallengesError.type Xor ChallengeServiceResponse =
     if (challenges.isEmpty) NoChallengesError.left
-    else if (level >= challenges.size) LastChallengeSolved.right
     else {
-      val ch = challenges(level)
-      NextChallenge(ChallengeWithAnswer(ch.title, ch.description, ch.assignment, ch.level, link = Some(nextLink), ch.answer)).right
+      val solved = challenges.lift(level - 1).map(_.copy(link = Some(nextLink)))
+      val next = challenges.lift(level).map(_.copy(link = Some(nextLink)))
+
+      NextChallenge(solved, next).right
     }
 
   def addChallenge(chans: ChallengeWithAnswer) = challenges = challenges :+ chans
